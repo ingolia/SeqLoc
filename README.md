@@ -1,4 +1,0 @@
-SeqLoc
-======
-
-Bio.SeqLoc

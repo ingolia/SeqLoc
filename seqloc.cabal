@@ -1,0 +1,29 @@
+Name:                seqloc
+Version:             0.0
+Cabal-Version:       >= 1.2
+License:             BSD3
+Author:              Nick Ingolia
+Maintainer:          nick@ingolia.org
+Build-Type:          Simple
+
+Category:            Bioinformatics
+
+Flag Tests
+  Description: Build test program
+  Default:     False
+
+Library
+  Exposed-modules:     
+  Other-modules:       
+  Build-depends:       base, bytestring, haskell98
+  Hs-Source-Dirs:      src
+  Ghc-options:         -O2 -Wall
+
+Executable seqloctest
+  if !flag(Tests)
+     Buildable: False
+  Main-is:             SeqLocTest.hs
+  Other-modules:       
+  Build-depends:       base, bytestring, haskell98
+  Hs-Source-Dirs:      src, test
+  Ghc-options:         -prof -auto-all -fhpc -O2 -Wall
