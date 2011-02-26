@@ -13,9 +13,11 @@ Flag Tests
   Default:     False
 
 Library
-  Exposed-modules:     
-  Other-modules:       
-  Build-depends:       base, bytestring, haskell98
+  Exposed-modules:     Bio.SeqLoc.Strand, Bio.SeqLoc.Position,
+                       Bio.SeqLoc.SeqData, Bio.SeqLoc.ContigLocation,
+                       Bio.SeqLoc.SpliceLocation
+  Other-modules:       Bio.SeqLoc.Types
+  Build-depends:       base, bytestring, haskell98, ListLike >= 3.0
   Hs-Source-Dirs:      src
   Ghc-options:         -O2 -Wall
 
