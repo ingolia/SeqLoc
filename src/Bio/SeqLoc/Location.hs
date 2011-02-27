@@ -22,9 +22,13 @@ module Bio.SeqLoc.Location
 
 import Prelude hiding (length)
 
+import Control.Applicative
 import Control.Monad
 import qualified Data.ByteString.Char8 as BS
 
+import qualified Data.Attoparsec.Char8 as AP
+
+import Bio.SeqLoc.LocRepr
 import qualified Bio.SeqLoc.Position as Pos
 import Bio.SeqLoc.Strand
 import qualified Bio.SeqLoc.SeqData as SeqData
@@ -126,6 +130,14 @@ data ContigLoc = ContigLoc { offset5 :: !Pos.Offset   -- ^ The offset of the 5\'
 instance Stranded ContigLoc where
   revCompl (ContigLoc seq5 len str) = ContigLoc seq5 len $ revCompl str
 
+to :: BS.ByteString
+to = BS.pack "to"
+
+instance LocRepr ContigLoc where
+  repr cloc = let (seq5, seq3) = bounds cloc 
+              in BS.concat [ repr seq5, to, repr seq3, repr . strand $ cloc ]
+  unrepr = fromBoundsStrand <$> unrepr <* AP.string to <*> unrepr <*> unrepr
+
 instance Location ContigLoc where
   length = clocLength
   seqData sequ (ContigLoc seq5 len str) = liftM (stranded str) . (SeqData.subseq seq5 len) $ sequ
@@ -151,6 +163,12 @@ instance Location ContigLoc where
   contigOverlaps = clocOverlaps
   toContigs = (: [])
 
+-- | Create a sequence location between 0-based starting and ending
+-- bounds with a specified strand.
+fromBoundsStrand :: Pos.Offset -> Pos.Offset -> Strand -> ContigLoc
+fromBoundsStrand seq5 seq3 _ | seq3 < seq5 = error "Bio.SeqLoc.Location.fromBoundsStrand: seq3 < seq5"
+fromBoundsStrand seq5 seq3 str = ContigLoc seq5 (1 + seq3 - seq5) str
+
 -- | Create a sequence location lying between 0-based starting and
 -- ending offsets.  When @start < end@, the location
 -- be on the forward strand, otherwise it will be on the
@@ -165,6 +183,7 @@ fromStartEnd start end
 -- of the location, and the direction it extends from the starting
 -- position, are determined by the strand of the starting position.
 fromPosLen :: Pos.Pos -> Pos.Offset -> ContigLoc
+fromPosLen _                       len | len < 0 = error "Bio.SeqLoc.Location.fromPosLen: len < 0"
 fromPosLen (Pos.Pos off5 Fwd)      len = ContigLoc off5               len Fwd
 fromPosLen (Pos.Pos off3 RevCompl) len = ContigLoc (off3 - (len - 1)) len RevCompl
 

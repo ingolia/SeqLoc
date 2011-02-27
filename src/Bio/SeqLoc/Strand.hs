@@ -12,11 +12,15 @@ module Bio.SeqLoc.Strand ( Strand(..)
                          )
     where 
 
--- import Data.Binary
+import Control.Applicative
 import Data.ByteString.Internal (c2w, w2c)
 import qualified Data.ByteString.Char8 as BS
 import qualified Data.ByteString.Lazy.Char8 as LBS
 import Data.Word (Word8)
+
+import qualified Data.Attoparsec.Char8 as AP
+
+import Bio.SeqLoc.LocRepr
 
 -- | Complement of a nucleotide character, swap A/T and G/C preserving
 -- case and leave all other characters unchanged.
@@ -34,6 +38,12 @@ compl ch  = ch
 -- | Sequence strand
 data Strand = Fwd | RevCompl deriving (Eq, Ord, Show, Read, Bounded, Enum)
 
+instance LocRepr Strand where
+  repr Fwd = BS.pack "(+)"
+  repr RevCompl = BS.pack "(-)"
+  unrepr = (AP.char '(') *> unreprStrand <* (AP.char ')')
+    where unreprStrand = (AP.char '+' *> pure Fwd) <|> (AP.char '-' *> pure RevCompl)
+                             
 -- | A nucleotide sequence or location on a nucleotide sequence that
 --   lies on a specific strand and has an orientation.
 class Stranded s where

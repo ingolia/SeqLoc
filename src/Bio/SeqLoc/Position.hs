@@ -19,15 +19,23 @@ module Bio.SeqLoc.Position (
   )
     where 
 
+import Control.Applicative
 import Control.Monad (liftM)
 import qualified Data.ByteString.Char8 as BS
 import qualified Data.ListLike as LL
 import Data.Word (Word8)
 
+import qualified Data.Attoparsec.Char8 as AP
+
+import Bio.SeqLoc.LocRepr
 import Bio.SeqLoc.Strand
 
 -- | Unstranded offset in a sequence
 newtype Offset = Offset { unOffset :: Int } deriving (Eq, Ord, Show, Read, Num, Real, Enum, Integral)
+
+instance LocRepr Offset where
+  repr = BS.pack . show . unOffset
+  unrepr = liftA Offset $ AP.signed AP.decimal
 
 -- | Stranded position in a sequence
 data Pos = Pos { offset :: !Offset -- ^ 0-based index of the position
@@ -38,6 +46,10 @@ data Pos = Pos { offset :: !Offset -- ^ 0-based index of the position
 instance Stranded Pos where
   revCompl (Pos off str) = Pos off (revCompl str)
   
+instance LocRepr Pos where
+  repr (Pos off str) = BS.concat [ repr off, repr str ]
+  unrepr = Pos <$> unrepr <*> unrepr
+
 -- | Returns a position resulting from sliding the original position
 -- along the sequence by a specified offset.  A positive offset will
 -- move the position away from the 5\' end of the forward stand of the
