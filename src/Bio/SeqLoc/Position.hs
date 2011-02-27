@@ -25,7 +25,6 @@ import qualified Data.ListLike as LL
 import Data.Word (Word8)
 
 import Bio.SeqLoc.Strand
-import Bio.SeqLoc.Types
 
 -- | Unstranded offset in a sequence
 newtype Offset = Offset { unOffset :: Int } deriving (Eq, Ord, Show, Read, Num, Real, Enum, Integral)
