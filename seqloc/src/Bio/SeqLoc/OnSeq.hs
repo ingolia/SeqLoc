@@ -28,9 +28,10 @@ module Bio.SeqLoc.OnSeq (
 
 import Control.Applicative
 import qualified Data.ByteString.Char8 as BS
+import Data.ByteString.Internal (c2w)
 import Data.String
 
-import qualified Data.Attoparsec.Char8 as AP
+import qualified Data.Attoparsec.Zepto as ZP
 
 import Bio.SeqLoc.LocRepr
 import qualified Bio.SeqLoc.Location as Loc
@@ -50,7 +51,7 @@ instance Stranded s => Stranded (OnSeq s) where
 
 instance LocRepr s => LocRepr (OnSeq s) where
   repr (OnSeq name obj) = BS.concat [ unSeqName name, at, repr obj ]
-  unrepr = OnSeq <$> (SeqName <$> AP.takeWhile1 (/= '@')) <* AP.char '@' <*> unrepr
+  unrepr = OnSeq <$> (SeqName <$> ZP.takeWhile (/= c2w '@')) <* ZP.string at <*> unrepr
 
 type SeqOffset = OnSeq Pos.Offset
 

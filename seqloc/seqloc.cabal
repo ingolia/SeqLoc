@@ -16,9 +16,9 @@ Library
   Exposed-modules:     Bio.SeqLoc.Strand, Bio.SeqLoc.Position,
                        Bio.SeqLoc.SeqData, Bio.SeqLoc.Location,
                        Bio.SeqLoc.SpliceLocation,
-                       Bio.SeqLoc.OnSeq
-                       Bio.SeqLoc.LocRepr
-  Other-modules:       
+                       Bio.SeqLoc.OnSeq,
+                       Bio.SeqLoc.LocRepr,
+                       Bio.SeqLoc.Transcript
   Build-depends:       base, bytestring, haskell98, ListLike >= 3.0, attoparsec >= 0.8.5
   Hs-Source-Dirs:      src
   Ghc-options:         -O2 -Wall
@@ -30,8 +30,9 @@ Executable test-seqloc
   Other-modules:       Bio.SeqLoc.Strand, Bio.SeqLoc.Position,
                        Bio.SeqLoc.SeqData, Bio.SeqLoc.Location,
                        Bio.SeqLoc.SpliceLocation,
-                       Bio.SeqLoc.OnSeq
+                       Bio.SeqLoc.OnSeq,
                        Bio.SeqLoc.LocRepr
-  Build-depends:       base, bytestring, haskell98, ListLike >= 3.0, attoparsec >= 0.8.5, QuickCheck, random
+  Build-depends:       base, bytestring, haskell98, ListLike >= 3.0, attoparsec >= 0.8.5,
+                       QuickCheck, random
   Hs-Source-Dirs:      src, test
   Ghc-options:         -prof -auto-all -fhpc -O2 -Wall

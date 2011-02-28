@@ -1,0 +1,34 @@
+Name:                seqloc-datafiles
+Version:             0.0
+Cabal-Version:       >= 1.2
+License:             BSD3
+Author:              Nick Ingolia
+Maintainer:          nick@ingolia.org
+Build-Type:          Simple
+
+Category:            Bioinformatics
+
+Flag Tests
+  Description: Build test program
+  Default:     False
+
+Library
+  Exposed-modules:     Bio.SeqLoc.GTF, Bio.SeqLoc.TranscriptTable
+  Other-modules:       
+  Build-depends:       base, bytestring, haskell98, ListLike >= 3.0,
+                       attoparsec >= 0.8.5, hashable, unordered-containers,
+                       iteratee >= 0.8.1, seqloc >= 0.0
+  Hs-Source-Dirs:      src
+  Ghc-options:         -O2 -Wall
+
+Executable test-gtf
+  if !flag(Tests)
+     Buildable: False
+  Main-is:             TestGtf.hs
+  Other-modules:       Bio.SeqLoc.GTF, Bio.SeqLoc.TranscriptTable
+  Build-depends:       base, bytestring, haskell98, ListLike >= 3.0,
+                       attoparsec >= 0.8.5, hashable, unordered-containers,
+                       iteratee >= 0.8.1, seqloc >= 0.0,
+                       QuickCheck, random
+  Hs-Source-Dirs:      src, test
+  Ghc-options:         -prof -auto-all -O2 -Wall

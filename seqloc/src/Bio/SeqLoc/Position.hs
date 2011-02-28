@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts, GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE FlexibleContexts, GeneralizedNewtypeDeriving, OverloadedStrings #-}
 
 {-| Data type for a sequence position.
 
@@ -21,11 +21,13 @@ module Bio.SeqLoc.Position (
 
 import Control.Applicative
 import Control.Monad (liftM)
+import qualified Data.ByteString as BSW
 import qualified Data.ByteString.Char8 as BS
 import qualified Data.ListLike as LL
 import Data.Word (Word8)
 
-import qualified Data.Attoparsec.Char8 as AP
+import qualified Data.Attoparsec.Char8 as AP (isDigit_w8)
+import qualified Data.Attoparsec.Zepto as ZP
 
 import Bio.SeqLoc.LocRepr
 import Bio.SeqLoc.Strand
@@ -35,7 +37,9 @@ newtype Offset = Offset { unOffset :: Int } deriving (Eq, Ord, Show, Read, Num, 
 
 instance LocRepr Offset where
   repr = BS.pack . show . unOffset
-  unrepr = liftA Offset $ AP.signed AP.decimal
+  unrepr = (negate <$> (ZP.string "-" *> decimal)) <|> (ZP.string "+" *> decimal) <|> decimal
+    where decimal = Offset . BSW.foldl' step 0 <$> ZP.takeWhile AP.isDigit_w8
+          step a w = a * 10 + fromIntegral (w - 48)
 
 -- | Stranded position in a sequence
 data Pos = Pos { offset :: !Offset -- ^ 0-based index of the position

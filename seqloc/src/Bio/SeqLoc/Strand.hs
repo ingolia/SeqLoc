@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE OverloadedStrings, TypeSynonymInstances #-}
 
 {-| Utilities for manipulating nucleotide sequences and locations on
 nucleotide sequences that occur on a forward or a reverse-complement
@@ -18,7 +18,7 @@ import qualified Data.ByteString.Char8 as BS
 import qualified Data.ByteString.Lazy.Char8 as LBS
 import Data.Word (Word8)
 
-import qualified Data.Attoparsec.Char8 as AP
+import qualified Data.Attoparsec.Zepto as ZP
 
 import Bio.SeqLoc.LocRepr
 
@@ -41,8 +41,8 @@ data Strand = Fwd | RevCompl deriving (Eq, Ord, Show, Read, Bounded, Enum)
 instance LocRepr Strand where
   repr Fwd = BS.pack "(+)"
   repr RevCompl = BS.pack "(-)"
-  unrepr = (AP.char '(') *> unreprStrand <* (AP.char ')')
-    where unreprStrand = (AP.char '+' *> pure Fwd) <|> (AP.char '-' *> pure RevCompl)
+  unrepr = (ZP.string "(+)" *> return Fwd) <|>
+           (ZP.string "(-)" *> return RevCompl)
                              
 -- | A nucleotide sequence or location on a nucleotide sequence that
 --   lies on a specific strand and has an orientation.

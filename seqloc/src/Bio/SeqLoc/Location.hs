@@ -24,7 +24,7 @@ import Control.Applicative
 import Control.Monad
 import qualified Data.ByteString.Char8 as BS
 
-import qualified Data.Attoparsec.Char8 as AP
+import qualified Data.Attoparsec.Zepto as ZP
 
 import Bio.SeqLoc.LocRepr
 import qualified Bio.SeqLoc.Position as Pos
@@ -134,7 +134,7 @@ to = BS.pack "to"
 instance LocRepr ContigLoc where
   repr cloc = let (seq5, seq3) = bounds cloc 
               in BS.concat [ repr seq5, to, repr seq3, repr . strand $ cloc ]
-  unrepr = fromBoundsStrand <$> unrepr <* AP.string to <*> unrepr <*> unrepr
+  unrepr = fromBoundsStrand <$> unrepr <* ZP.string to <*> unrepr <*> unrepr
 
 instance Location ContigLoc where
   length = clocLength

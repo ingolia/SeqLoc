@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeFamilies, FlexibleContexts #-}
+{-# LANGUAGE TypeFamilies, FlexibleContexts, OverloadedStrings #-}
 
 {-| Data type for a more general sequence location consiting of
 disjoint ranges of positions on a sequence.
@@ -23,7 +23,7 @@ import qualified Data.ByteString.Char8 as BS
 import Data.List (foldl')
 import Data.Maybe
 
-import qualified Data.Attoparsec.Char8 as AP
+import qualified Data.Attoparsec.Zepto as ZP
 
 import Bio.SeqLoc.LocRepr
 import Bio.SeqLoc.Location
@@ -56,7 +56,8 @@ instance Stranded SpliceLoc where
 
 instance LocRepr SpliceLoc where
   repr = BS.intercalate (BS.singleton ';') . map repr . contigs
-  unrepr = fromContigs <$> AP.sepBy1 unrepr (AP.char ';')
+  unrepr = fromContigs <$> scan
+    where scan = liftA2 (:) unrepr ((ZP.string ";" *> scan) <|> pure [])
 
 instance Location SpliceLoc where
   length = foldl' (\len c -> len + length c) 0 . contigs
