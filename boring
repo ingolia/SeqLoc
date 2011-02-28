@@ -1,6 +1,8 @@
 leftovers-samtools-0.1.12a
 (^|/)dist($|/)
 \.AppleDouble
+^\.hpc
+\.tix$
 # Default boring file regexps:
 \.hi$
 \.hi-boot$

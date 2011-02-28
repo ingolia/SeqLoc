@@ -11,22 +11,21 @@ no strand.
 module Bio.SeqLoc.SpliceLocation ( 
   -- * Sequence locations
   SpliceLoc(..)
-
   , fromContigs
-  
-  -- * Displaying locations
-  , displaySpliceLoc
---  , parser
   ) where 
 
 import Prelude hiding (length)
 
+import Control.Applicative
 import Control.Arrow ((***))
 import Control.Monad
 import qualified Data.ByteString.Char8 as BS
 import Data.List (foldl')
 import Data.Maybe
 
+import qualified Data.Attoparsec.Char8 as AP
+
+import Bio.SeqLoc.LocRepr
 import Bio.SeqLoc.Location
 import qualified Bio.SeqLoc.Position as Pos
 import Bio.SeqLoc.Strand
@@ -54,6 +53,10 @@ instance Stranded SpliceLoc where
     where (sl0:slrest) = tails sll
           newlast = SpliceLocLast (revCompl . contig $ sl0)
           addprev slnew slold = SpliceLocPrev (revCompl . contig $ slold) slnew
+
+instance LocRepr SpliceLoc where
+  repr = BS.intercalate (BS.singleton ';') . map repr . contigs
+  unrepr = fromContigs <$> AP.sepBy1 unrepr (AP.char ';')
 
 instance Location SpliceLoc where
   length = foldl' (\len c -> len + length c) 0 . contigs
@@ -132,7 +135,3 @@ slocExtend (ext5, ext3) sloc = extended3 { contig = extend (ext5, 0) . contig $ 
   where extend3 (SpliceLocPrev c n) = SpliceLocPrev c (extend3 n)  
         extend3 (SpliceLocLast c) = SpliceLocLast $ extend (0, ext3) c
         extended3 = extend3 sloc
-
--- | Display a human-friendly, zero-based representation of a sequence location.
-displaySpliceLoc :: SpliceLoc -> BS.ByteString
-displaySpliceLoc = BS.intercalate (BS.singleton ';') . map displayContigLoc . contigs

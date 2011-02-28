@@ -36,6 +36,7 @@ import Bio.SeqLoc.LocRepr
 import qualified Bio.SeqLoc.Location as Loc
 import qualified Bio.SeqLoc.Position as Pos
 import qualified Bio.SeqLoc.SpliceLocation as SpLoc
+import Bio.SeqLoc.Strand
 
 newtype SeqName = SeqName { unSeqName :: BS.ByteString } deriving (Show, Read, Eq, Ord, IsString)
 
@@ -43,6 +44,9 @@ data OnSeq s = OnSeq { onSeqName :: !SeqName, unOnSeq :: !s } deriving (Show, Re
 
 at :: BS.ByteString
 at = BS.singleton '@'
+
+instance Stranded s => Stranded (OnSeq s) where
+  revCompl (OnSeq name obj) = OnSeq name (revCompl obj)
 
 instance LocRepr s => LocRepr (OnSeq s) where
   repr (OnSeq name obj) = BS.concat [ unSeqName name, at, repr obj ]

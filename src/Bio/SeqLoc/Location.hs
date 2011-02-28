@@ -12,11 +12,9 @@ module Bio.SeqLoc.Location
        ( -- * Sequence locations
          Location(..)
          -- * Contiguous sequence locations
-       , ContigLoc(..), fromStartEnd, fromPosLen
+       , ContigLoc(..), fromStartEnd, fromPosLen, fromBoundsStrand
          -- * Transforming locations
        , slide
-         -- * Printing locations
-       , displayContigLoc
        ) 
     where
 
@@ -233,14 +231,3 @@ clocOverlaps contig1 contig2
     = case (bounds contig1, bounds contig2) of
         ((low1, high1),(low2, high2)) -> (strand contig1 == strand contig2)
                                          && (low1 <= high2) && (low2 <= high1)
-
-displayContigLoc :: ContigLoc -> BS.ByteString
-displayContigLoc cloc = BS.concat [ BS.pack . show . Pos.offset . startPos $ cloc
-                                  , BS.pack "to"
-                                  , BS.pack . show . Pos.offset . endPos $ cloc
-                                  ]
-
---parser :: Parsing.ParseBS ContigLoc
---parser = fromStartEnd <$>
---         (Parsing.integral <* Parsing.string "to") <*>
---         Parsing.integral
