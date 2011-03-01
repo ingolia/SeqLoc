@@ -10,9 +10,9 @@ no strand.
 
 module Bio.SeqLoc.Location 
        ( -- * Sequence locations
-         Location(..)
+         Location(..), overlaps
          -- * Contiguous sequence locations
-       , ContigLoc(..), fromStartEnd, fromPosLen, fromBoundsStrand
+       , ContigLoc, offset5, fromStartEnd, fromPosLen, fromBoundsStrand
          -- * Transforming locations
        , slide
        ) 
@@ -32,6 +32,7 @@ import Bio.SeqLoc.Strand
 import qualified Bio.SeqLoc.SeqData as SeqData
 
 class Location l where
+  strand :: l -> Strand
   length :: l -> Pos.Offset
   
   -- | The bounds of a sequence location.  This is a pair consisting
@@ -113,16 +114,18 @@ class Location l where
   -- position.
   contigOverlaps :: ContigLoc -> l -> Bool
 
+  -- | Contigs that comprise the location
   toContigs :: l -> [ContigLoc]
 
-  overlaps :: (Location l1) => l -> l1 -> Bool
-  overlaps l0 = any (\c1 -> contigOverlaps c1 l0) . toContigs
+
+overlaps :: (Location l1, Location l2) => l1 -> l2 -> Bool
+overlaps l1 = any (\c2 -> contigOverlaps c2 l1) . toContigs
 
 -- | Contiguous sequence location defined by a span of sequence
 -- positions, lying on a specific strand of the sequence.
 data ContigLoc = ContigLoc { offset5 :: !Pos.Offset   -- ^ The offset of the 5\' end of the location, as a 0-based index
                            , clocLength :: !Pos.Offset    -- ^ The length of the location
-                           , strand :: !Strand    -- ^ The strand of the location
+                           , clocStrand :: !Strand    -- ^ The strand of the location
                            } deriving (Eq, Ord, Show)
 
 instance Stranded ContigLoc where
@@ -137,6 +140,7 @@ instance LocRepr ContigLoc where
   unrepr = fromBoundsStrand <$> unrepr <* ZP.string to <*> unrepr <*> unrepr
 
 instance Location ContigLoc where
+  strand = clocStrand
   length = clocLength
   seqData sequ (ContigLoc seq5 len str) = liftM (stranded str) . (SeqData.subseq seq5 len) $ sequ
   seqDataPad sequ (ContigLoc seq5 len str) = (stranded str) . (SeqData.subseqPad seq5 len) $ sequ

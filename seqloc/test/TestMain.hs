@@ -61,6 +61,8 @@ tests = [ T "Strand revCompl"               test_Strand_revCompl
         , T "Loc outof based on bounds"     test_Loc_OutofBounds
         , T "Loc loc outof/into inverse"    property_LocCLocOutofInto
         , T "Loc outof association"         property_LocOutofAssoc
+        , T "Loc locOutof"                  property_SpLocOutof
+        , T "Loc locOutof valid"            property_SpLocOutofGood
         , T "Loc within"                    property_Loc_Within
         , T "Loc seqData"                   property_Loc_seqData
         , T "Loc seqDataPadded"             property_Loc_seqDataPadded
@@ -146,7 +148,7 @@ instance Arbitrary Pos.Pos where
     arbitrary = liftM2 Pos.Pos genOffset arbitrary
 
 instance Arbitrary Loc.ContigLoc where
-    arbitrary = liftM3 Loc.ContigLoc genOffset genPositiveOffset arbitrary
+    arbitrary = liftM2 Loc.fromPosLen arbitrary genPositiveOffset
 
 test_Contig_RevCompl :: Loc.ContigLoc -> Bool
 test_Contig_RevCompl = test_revCompl
@@ -246,19 +248,19 @@ test_Contig_repr = test_repr
 
 genInvertibleLoc :: Gen SpLoc.SpliceLoc
 genInvertibleLoc = sized $ \sz -> do ncontigs <- choose (1, sz + 1)
-                                     fwdloc <- liftM SpLoc.fromContigs $ genContigs ncontigs
+                                     fwdloc <- liftM (fromJust . SpLoc.fromContigs) 
+                                               $ genContigs ncontigs
                                      rc <- arbitrary
                                      if rc then return $ revCompl fwdloc else return fwdloc
     where genContigs = liftM (reverse . foldl' intervalsToContigs []) . genIntervals
           genIntervals nints = replicateM nints $ liftM2 (,) genPositiveOffset genPositiveOffset
-          intervalsToContigs [] (init5, len) = [Loc.ContigLoc init5 len Fwd]
+          intervalsToContigs [] (init5, len) = [Loc.fromPosLen (Pos.Pos init5 Fwd) len]
           intervalsToContigs prevs@(prev:_) (nextoffset, nextlen)
               = let !prevend = Loc.offset5 prev + Loc.length prev
-                in (Loc.ContigLoc (prevend + nextoffset) nextlen Fwd):prevs
+                in (Loc.fromPosLen (Pos.Pos (prevend + nextoffset) Fwd) nextlen):prevs
 
 instance Arbitrary SpLoc.SpliceLoc where
-    arbitrary = sized $ \sz -> do nintervals <- choose (1, sz + 1)
-                                  liftM SpLoc.fromContigs $ vector nintervals
+  arbitrary = genInvertibleLoc
 
 test_Loc_RevCompl :: SpLoc.SpliceLoc -> Bool
 test_Loc_RevCompl = test_revCompl
@@ -285,7 +287,7 @@ property_LocCLocOutofInto :: Loc.ContigLoc -> Property
 property_LocCLocOutofInto cloc
     = forAll genInvertibleLoc $ \loc ->
       let !mOutloc = Loc.clocOutof cloc loc
-          !mInloc = mOutloc >>= mapM (flip Loc.clocInto loc) . Loc.toContigs >>= return . SpLoc.fromContigs
+          !mInloc = mOutloc >>= mapM (flip Loc.clocInto loc) . Loc.toContigs >>= return . fromJust . SpLoc.fromContigs
       in (isJust mOutloc) ==> and [ liftM Loc.length mInloc == Just (Loc.length cloc)
                                   , liftM Loc.bounds mInloc == Just (Loc.bounds cloc)
                                   ]
@@ -295,6 +297,22 @@ property_LocOutofAssoc loc cloc pos
     = let !mOutloc = Loc.clocOutof cloc loc
           !mOutpos = mOutloc >>= \outloc -> Loc.posOutof pos outloc
       in (isJust mOutpos) ==> mOutpos == (Loc.posOutof pos cloc >>= \outpos -> Loc.posOutof outpos loc)
+
+property_SpLocOutof :: SpLoc.SpliceLoc -> SpLoc.SpliceLoc -> Bool
+property_SpLocOutof subloc outerloc =
+  let !mOutofContigs = liftM Loc.toContigs $ SpLoc.locOutof subloc outerloc
+      !mContigsOutof = liftM (concat . map Loc.toContigs) $
+                       mapM (flip Loc.clocOutof outerloc) $
+                       Loc.toContigs subloc
+  in mOutofContigs == mContigsOutof
+
+property_SpLocOutofGood :: SpLoc.SpliceLoc -> SpLoc.SpliceLoc -> Property
+property_SpLocOutofGood subloc outerloc =
+  let !mOutofContigs = liftM Loc.toContigs $ SpLoc.locOutof subloc outerloc
+      !mContigsOutof = liftM (concat . map Loc.toContigs) $
+                       mapM (flip Loc.clocOutof outerloc) $
+                       Loc.toContigs subloc
+  in (isJust mOutofContigs) ==> mOutofContigs == mContigsOutof
 
 property_Loc_seqData :: SpLoc.SpliceLoc -> Property
 property_Loc_seqData loc
@@ -357,7 +375,8 @@ data Test = forall t . Testable t => T String t
 runTest :: Test -> IO ()
 runTest (T name test) = do
   putStr $ name ++ replicate (40 - length name) '.' ++ "  "
-  quickCheck test
+  quickCheckWith args test
+    where args = stdArgs { maxDiscard = 100000 }
 
 {-
 runBigTest :: Test -> IO ()

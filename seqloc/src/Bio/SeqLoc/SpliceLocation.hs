@@ -10,8 +10,9 @@ no strand.
 
 module Bio.SeqLoc.SpliceLocation ( 
   -- * Sequence locations
-  SpliceLoc(..)
+  SpliceLoc
   , fromContigs
+  , locOutof
   ) where 
 
 import Prelude hiding (length)
@@ -35,31 +36,49 @@ import qualified Bio.SeqLoc.SeqData as SeqData
 -- set of one or more contiguous regions.
 data SpliceLoc = SpliceLocLast { contig :: !ContigLoc } 
                | SpliceLocPrev { contig :: !ContigLoc
-                               , next :: !SpliceLoc
+                               , _next :: !SpliceLoc
                                }
                deriving (Eq, Ord, Show)
 
-fromContigs :: [ContigLoc] -> SpliceLoc
-fromContigs [] = error $ "Bio.SeqLoc.SpliceLocation.fromContigs: empty contigs"
-fromContigs [l] = SpliceLocLast l
-fromContigs (l:rest) = SpliceLocPrev l (fromContigs rest)
+singleton :: ContigLoc -> SpliceLoc
+singleton = SpliceLocLast
+
+consContig :: ContigLoc -> SpliceLoc -> Maybe SpliceLoc
+consContig c sploc | goodJunction c (contig sploc) = Just $! SpliceLocPrev c sploc
+                   | otherwise = Nothing
+                     
+goodJunction :: ContigLoc -> ContigLoc -> Bool
+goodJunction c5 c3 = sameStrand && inOrder
+  where sameStrand = strand c5 == strand c3
+        c5end = snd . bounds $ c5
+        c3start = fst . bounds $ c3
+        inOrder = case strand c5 of
+          Fwd -> c5end < c3start
+          RevCompl -> c5end > c3start
+
+fromContigs :: [ContigLoc] -> Maybe SpliceLoc
+fromContigs [] = Nothing
+fromContigs [l] = Just $! singleton l
+fromContigs (l:rest) = fromContigs rest >>= consContig l
 
 tails :: SpliceLoc -> [SpliceLoc]
 tails sll@(SpliceLocLast _) = [sll]
 tails slp@(SpliceLocPrev _ n) = slp : (tails n)
 
 instance Stranded SpliceLoc where
-  revCompl sll = foldl' addprev newlast slrest
+  revCompl sll = fromMaybe badRevCompl . foldl' addprev newlast $ slrest
     where (sl0:slrest) = tails sll
-          newlast = SpliceLocLast (revCompl . contig $ sl0)
-          addprev slnew slold = SpliceLocPrev (revCompl . contig $ slold) slnew
+          newlast = Just $! singleton . revCompl . contig $ sl0
+          addprev slnew slold = slnew >>= consContig (revCompl . contig $ slold)
+          badRevCompl = error $ "Bad junction doing reverse complement on " ++ (BS.unpack . repr) sll
 
 instance LocRepr SpliceLoc where
   repr = BS.intercalate (BS.singleton ';') . map repr . contigs
-  unrepr = fromContigs <$> scan
+  unrepr = (fromContigs <$> scan) >>= maybe (fail "bad contig order") return
     where scan = liftA2 (:) unrepr ((ZP.string ";" *> scan) <|> pure [])
 
 instance Location SpliceLoc where
+  strand = strand . contig
   length = foldl' (\len c -> len + length c) 0 . contigs
   bounds = (minimum *** maximum) . unzip . map bounds . contigs  
   seqData sequ = liftM SeqData.concat . mapM (seqData sequ) . contigs
@@ -75,6 +94,9 @@ instance Location SpliceLoc where
   posWithin pos = or . map (posWithin pos) . contigs
   contigOverlaps c = any (contigOverlaps c ) . contigs
   toContigs = contigs
+
+locOutof :: (Location l) => SpliceLoc -> l -> Maybe SpliceLoc
+locOutof sploc outer = mapM (flip clocOutof outer) (toContigs sploc) >>= fromContigs . concat . map toContigs
 
 contigs :: SpliceLoc -> [ContigLoc]
 contigs (SpliceLocLast c) = [c]
@@ -113,22 +135,29 @@ slocClocInto subcloc = listToMaybe . catMaybes . map into . contigsAndOffsets
     where into (cloc, off) = liftM (slide off) . clocInto subcloc $ cloc
 
 slocClocOutof :: ContigLoc -> SpliceLoc -> Maybe SpliceLoc
-slocClocOutof (ContigLoc pos5 len cstrand) 
-    = liftM (stranded cstrand . fromContigs) . regionOutof pos5 len . contigs
-
+slocClocOutof cloc
+    = liftM (stranded (strand cloc) . fromContigsErr) . regionOutof (offset5 cloc) (length cloc) . contigs
+  where fromContigsErr ctgs = fromMaybe badContigs $! fromContigs ctgs
+          where badContigs = error . unwords $ 
+                             [ "bad contig order in slocClocOutof" ] ++
+                             map (BS.unpack . repr) ctgs
+        
+  
 regionOutof :: Pos.Offset -> Pos.Offset -> [ContigLoc] -> Maybe [ContigLoc]
 regionOutof _ _ [] = Nothing
 regionOutof pos5 len (cloc0:rest)
     | pos5 < 0 = Nothing
     | len < 0 = error $ "Bio.SeqLoc.SpliceLocation.regionOutof: input, " ++ show (pos5, len, cloc0)
     | pos5 >= len0 = regionOutof (pos5 - len0) len rest
-    | (pos5 + len <= len0) = case clocOutof (ContigLoc pos5 len Fwd) cloc0 of
+    | (pos5 + len <= len0) = let subcloc = fromPosLen (Pos.Pos pos5 Fwd) len
+                             in case clocOutof subcloc cloc0 of
                                Just out0 -> Just [out0]
-                               Nothing -> error $ "regionOutof: final bounds failure, " ++ show (pos5, len, cloc0)
+                               Nothing -> error $ "regionOutof: final bounds failure, " ++ (BS.unpack . repr) subcloc
     | otherwise = let outlen0 = len0 - pos5
-                  in case clocOutof (ContigLoc pos5 outlen0 Fwd) cloc0 of
+                      subcloc = fromPosLen (Pos.Pos pos5 Fwd) outlen0
+                  in case clocOutof subcloc cloc0 of
                        Just out0 -> liftM (out0 :) . regionOutof 0 (len - outlen0) $ rest
-                       Nothing -> error $ "regionOutof: internal bounds failure, " ++ show (pos5, len, outlen0, cloc0)
+                       Nothing -> error $ "regionOutof: internal bounds failure, " ++ (BS.unpack . repr) subcloc
     where len0 = length cloc0
 
 slocExtend :: (Pos.Offset, Pos.Offset) -> SpliceLoc -> SpliceLoc
