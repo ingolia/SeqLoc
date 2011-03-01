@@ -37,15 +37,14 @@ readGtfTranscripts = Iter.fileDriver gtfTrxsIter >=>
 
 mkTranscripts :: GtfTrxs -> Either String [Transcript]
 mkTranscripts trxs = go [] allTrxs
-  where allTrxs = HM.keys . gtfTogene $ trxs
+  where allTrxs = HM.toList . gtfTogene $ trxs
         go curr [] = Right curr
-        go curr (trxname:rest) = case mkOne trxname of
+        go curr (trxAndGene:rest) = case mkOne trxAndGene of
           Left err -> Left err
           Right t -> let next = t : curr in next `seq` go next rest
-        mkOne trxname = mkTranscript trxname exons cdses gene
+        mkOne (trxname, genename) = mkTranscript trxname exons cdses genename
           where exons = fromMaybe [] . HM.lookup trxname . gtfExonLocs $ trxs
                 cdses = fromMaybe [] . HM.lookup trxname . gtfCdsLocs $ trxs
-                gene = fromMaybe (error $ "mkTranscripts: missing gene") . HM.lookup trxname . gtfTogene $ trxs
 
 mkTranscript :: BS.ByteString -> [ContigSeqLoc] -> [ContigSeqLoc] -> BS.ByteString -> Either String Transcript
 mkTranscript trx exons cdses gene = moderr $ do loc <- exonLoc exons
@@ -57,9 +56,10 @@ exonLoc :: [ContigSeqLoc] -> Either String SpliceSeqLoc
 exonLoc exons = do
   (seqname, rawcontigs) <- allSameName exons
   contigs <- sortclocs rawcontigs
-  return $! OnSeq seqname (SpLoc.fromContigs contigs)
-  where sortclocs clocs = maybe badClocs Right . sortContigs $ clocs
-          where badClocs = Left . unwords $ [ "bad transcript exons" ] ++ map (BS.unpack . repr) clocs
+  sploc <- maybe (badClocs contigs) Right $! SpLoc.fromContigs contigs
+  return $! OnSeq seqname sploc
+  where sortclocs clocs = maybe (badClocs clocs) Right . sortContigs $ clocs
+        badClocs clocs = Left . unwords $ [ "bad transcript exons" ] ++ map (BS.unpack . repr) clocs
 
 cdsLoc :: SpliceSeqLoc -> [ContigSeqLoc] -> Either String (Maybe Loc.ContigLoc)                
 cdsLoc _ [] = return Nothing
