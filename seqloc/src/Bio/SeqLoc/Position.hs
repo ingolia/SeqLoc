@@ -15,7 +15,7 @@ module Bio.SeqLoc.Position (
   , slide
 
   -- * Extracting sequences
-  , atOffset, atPos                           
+  , atPos                           
   )
     where 
 
@@ -23,13 +23,12 @@ import Control.Applicative
 import Control.Monad (liftM)
 import qualified Data.ByteString as BSW
 import qualified Data.ByteString.Char8 as BS
-import qualified Data.ListLike as LL
-import Data.Word (Word8)
 
 import qualified Data.Attoparsec.Char8 as AP (isDigit_w8)
 import qualified Data.Attoparsec.Zepto as ZP
 
 import Bio.SeqLoc.LocRepr
+import Bio.SeqLoc.SeqData
 import Bio.SeqLoc.Strand
 
 -- | Unstranded offset in a sequence
@@ -63,19 +62,10 @@ instance LocRepr Pos where
 slide :: Pos -> Offset -> Pos
 slide (Pos off str) doff = Pos (off + doff) str
 
--- | Extract 'Just' the element at a specific sequence offset, or
--- 'Nothing' if the offset is outside the bounds of the the region.
-atOffset :: (LL.ListLike s c) => s -> Offset -> Maybe c
-atOffset s (Offset off) | off < 0 = Nothing
-                        | otherwise = case LL.drop off s of
-                          trimmed | LL.null trimmed -> Nothing
-                                  | otherwise -> Just . LL.head $ trimmed
-
-
 -- | Extract 'Just' the item at a specific sequence position, or
 -- 'Nothing' if the position lies outside the bounds of the sequence.
-atPos :: (LL.ListLike s c, Stranded c) => s -> Pos -> Maybe c
-atPos sequ (Pos off str) = liftM (stranded str) . atOffset sequ $ off
+atPos :: (SeqData s) => s -> Pos -> Maybe Char
+atPos sequ (Pos off str) = liftM (stranded str) . ntAt sequ $ off
 
 {-# SPECIALIZE atPos :: String -> Pos -> Maybe Char #-}
-{-# SPECIALIZE atPos :: BS.ByteString -> Pos -> Maybe Word8 #-}
+{-# SPECIALIZE atPos :: BS.ByteString -> Pos -> Maybe Char #-}

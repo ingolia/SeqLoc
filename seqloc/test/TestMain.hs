@@ -122,10 +122,10 @@ property_Pos_atPos pos
     forAll (genNtByteString $ fromIntegral seqlen) $ \sequ ->
     let actual = Pos.atPos sequ pos
     in if and [ Pos.offset pos >= 0, Pos.offset pos < seqlen ]
-       then let fwdNt = BSW.index sequ (fromIntegral . Pos.offset $ pos)
+       then let fwdNt = BS.index sequ (fromIntegral . Pos.offset $ pos)
             in case Pos.strand pos of
               Fwd ->      actual == Just fwdNt
-              RevCompl -> actual == Just (c2w . compl . w2c $ fwdNt)
+              RevCompl -> actual == Just (compl $ fwdNt)
        else actual == Nothing
 
 property_Pos_atPos2 :: Pos.Pos -> Property
@@ -133,7 +133,7 @@ property_Pos_atPos2 pos
   = forAll genPositiveOffset $ \seqlen ->
   forAll (genNtByteString $ fromIntegral seqlen) $ \sequ -> 
   and [ Pos.atPos sequ pos == Pos.atPos (LBS.fromChunks [sequ]) pos
-      , Pos.atPos sequ pos == liftM c2w (Pos.atPos (BS.unpack sequ) pos)
+      , Pos.atPos sequ pos == Pos.atPos (BS.unpack sequ) pos
       ]
 
 test_Pos_repr :: Pos.Pos -> Bool
@@ -201,7 +201,7 @@ property_Contig_seqData contig
 property_Contig_seqDataPadded :: Loc.ContigLoc -> Property
 property_Contig_seqDataPadded contig
     = forAll (genNonNegOffset >>= genNtByteString . fromIntegral) $ \sequ ->
-      (BS.pack $ map (maybe 'N' w2c . Pos.atPos sequ) contigPoses) == Loc.seqDataPad sequ contig
+      (BS.pack $ map (fromMaybe 'N' . Pos.atPos sequ) contigPoses) == Loc.seqDataPad sequ contig
     where contigPoses = mapMaybe (flip Loc.posOutof contig . flip Pos.Pos Fwd) [0..(Loc.length contig - 1)]
 
 property_Contig_seqData2 :: Loc.ContigLoc -> Property
@@ -326,7 +326,7 @@ property_Loc_seqData loc
 property_Loc_seqDataPadded :: SpLoc.SpliceLoc -> Property
 property_Loc_seqDataPadded loc
     = forAll (genNonNegOffset >>= genNtByteString . fromIntegral) $ \sequ ->
-      (BS.pack $ map (maybe 'N' w2c . Pos.atPos sequ) locPoses) == Loc.seqDataPad sequ loc
+      (BS.pack $ map (fromMaybe 'N' . Pos.atPos sequ) locPoses) == Loc.seqDataPad sequ loc
     where locPoses = mapMaybe (flip Loc.posOutof loc . flip Pos.Pos Fwd) [0..(Loc.length loc - 1)]
 
 property_SpLoc_seqData2 :: SpLoc.SpliceLoc -> Property
