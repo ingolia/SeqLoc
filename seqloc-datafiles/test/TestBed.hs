@@ -19,6 +19,9 @@ main :: IO ()
 main = do withFile "test/bed-out.txt" WriteMode $ \hout ->
             let bedIter = bedTranscriptEnum $ Iter.mapM_ (BS.hPutStrLn hout . unparseLine)
             in Iter.fileDriver bedIter "/data/genomes/Homo_sapiens/hg19_knownGene.bed"
+          withFile "test/bed-copy.bed" WriteMode $ \hout ->
+            let bedIter = bedTranscriptEnum $ Iter.mapM_ (BS.hPutStrLn hout . transcriptToBedStd)
+            in Iter.fileDriver bedIter "/data/genomes/Homo_sapiens/hg19_knownGene.bed"
             
           -- trx' <- readTable "test/out.txt"
           -- let trx10 = take 10 trx'

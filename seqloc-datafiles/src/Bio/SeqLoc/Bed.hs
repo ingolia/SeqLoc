@@ -3,13 +3,15 @@
 module Bio.SeqLoc.Bed
        ( readBedTranscripts
        , bedZP, bedTranscriptEnum
-       , transcriptToBed
+       , transcriptToBed, transcriptToBedStd
        )
        where
 
 import Control.Applicative
 import Control.Monad
 import qualified Data.ByteString.Char8 as BS
+import Data.List
+import Data.Ord
 
 import qualified Data.Attoparsec.Zepto as ZP
 import qualified Data.Iteratee as Iter
@@ -25,8 +27,34 @@ import Bio.SeqLoc.Transcript
 
 import Bio.SeqLoc.ZeptoUtils
 
-transcriptToBed :: Transcript -> BS.ByteString
-transcriptToBed _ = BS.empty
+transcriptToBedStd :: Transcript -> BS.ByteString
+transcriptToBedStd = transcriptToBed "0" "0"
+
+transcriptToBed :: BS.ByteString -> BS.ByteString -> Transcript -> BS.ByteString
+transcriptToBed score rgb trx = unfields fields
+  where unfields = BS.intercalate (BS.singleton '\t')
+        fields = [ unSeqName chrom
+                 , repr $ chromStart
+                 , repr $ chromEnd + 1
+                 , unSeqName . trxId $ trx
+                 , score
+                 , strandchr
+                 , repr $ thickStart
+                 , repr $ thickEnd + 1
+                 , rgb
+                 , BS.pack . show . length $ blockSizes
+                 , unCommaList blockSizes
+                 , unCommaList blockStarts
+                 ]
+        (OnSeq chrom loc) = location trx
+        (chromStart, chromEnd) = Loc.bounds loc
+        strandchr = case Loc.strand loc of Fwd -> "+"; RevCompl -> "-"
+        (thickStart, thickEnd) = maybe noCds (Loc.bounds . unOnSeq) . cdsLocation $ trx
+        noCds = (chromStart, chromStart - 1)
+        contigs = sortBy (comparing Loc.offset5) . Loc.toContigs $ loc
+        blockSizes = map Loc.length contigs
+        blockStarts = map (subtract chromStart . Loc.offset5) contigs
+        unCommaList = BS.concat . map (flip BS.append (BS.singleton ',') . repr)
 
 readBedTranscripts :: FilePath -> IO [Transcript]
 readBedTranscripts = Iter.fileDriver (bedTranscriptEnum Iter.stream2list)
@@ -96,7 +124,7 @@ bedCdsLoc loc thickStart thickEnd
     return $! stranded (Loc.strand loc) $ Loc.fromStartEnd (Pos.offset relstart) (Pos.offset relend)
       where badCdsLoc = fail $ "Bio.SeqLoc.Bed: bad cds in " ++ 
                         (BS.unpack . BS.unwords $ [ repr loc, repr thickStart, repr thickEnd ])
-                        
+
 commas :: Int -> ZP.Parser a -> ZP.Parser [a]
 commas n p | n < 1     = return [] 
            | otherwise = (:) <$> p <*>

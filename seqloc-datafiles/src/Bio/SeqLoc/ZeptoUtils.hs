@@ -11,8 +11,6 @@ import Data.ByteString.Internal (c2w)
 import qualified Data.Attoparsec.Char8 as AP (isDigit_w8)
 import qualified Data.Attoparsec.Zepto as ZP
 
-import Debug.Trace
-
 import Bio.SeqLoc.Strand
 
 strand :: ZP.Parser Strand

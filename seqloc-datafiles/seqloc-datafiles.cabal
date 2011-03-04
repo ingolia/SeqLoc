@@ -21,6 +21,16 @@ Library
   Hs-Source-Dirs:      src
   Ghc-options:         -O2 -Wall
 
+Executable gtf-to-bed
+  Main-is:             GtfToBed.hs
+  Other-modules:       Bio.SeqLoc.GTF, Bio.SeqLoc.Bed, Bio.SeqLoc.ZeptoUtils
+  Build-depends:       base, bytestring, haskell98,
+                       attoparsec >= 0.8.5, hashable, unordered-containers,
+                       iteratee >= 0.8.1, seqloc >= 0.0, transformers, monads-tf
+  Hs-Source-Dirs:      src
+  Ghc-options:         -prof -auto-all -O2 -Wall
+  C-Sources:           src/rtsopts.c
+
 Executable test-gtf
   if !flag(Tests)
      Buildable: False
@@ -32,6 +42,7 @@ Executable test-gtf
                        QuickCheck, random
   Hs-Source-Dirs:      src, test
   Ghc-options:         -prof -auto-all -O2 -Wall
+  C-Sources:           src/rtsopts.c
 
 Executable test-bed
   if !flag(Tests)
