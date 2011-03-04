@@ -13,9 +13,9 @@ Flag Tests
   Default:     False
 
 Library
-  Exposed-modules:     Bio.SeqLoc.GTF, Bio.SeqLoc.TranscriptTable
-  Other-modules:       
-  Build-depends:       base, bytestring, haskell98, ListLike >= 3.0,
+  Exposed-modules:     Bio.SeqLoc.Bed, Bio.SeqLoc.GTF, Bio.SeqLoc.TranscriptTable
+  Other-modules:       Bio.SeqLoc.ZeptoUtils
+  Build-depends:       base, bytestring, haskell98,
                        attoparsec >= 0.8.5, hashable, unordered-containers,
                        iteratee >= 0.8.1, seqloc >= 0.0
   Hs-Source-Dirs:      src
@@ -25,8 +25,20 @@ Executable test-gtf
   if !flag(Tests)
      Buildable: False
   Main-is:             TestGtf.hs
-  Other-modules:       Bio.SeqLoc.GTF, Bio.SeqLoc.TranscriptTable
-  Build-depends:       base, bytestring, haskell98, ListLike >= 3.0,
+  Other-modules:       Bio.SeqLoc.GTF, Bio.SeqLoc.TranscriptTable, Bio.SeqLoc.ZeptoUtils
+  Build-depends:       base, bytestring, haskell98,
+                       attoparsec >= 0.8.5, hashable, unordered-containers,
+                       iteratee >= 0.8.1, seqloc >= 0.0,
+                       QuickCheck, random
+  Hs-Source-Dirs:      src, test
+  Ghc-options:         -prof -auto-all -O2 -Wall
+
+Executable test-bed
+  if !flag(Tests)
+     Buildable: False
+  Main-is:             TestBed.hs
+  Other-modules:       Bio.SeqLoc.Bed, Bio.SeqLoc.TranscriptTable, Bio.SeqLoc.ZeptoUtils
+  Build-depends:       base, bytestring, haskell98,
                        attoparsec >= 0.8.5, hashable, unordered-containers,
                        iteratee >= 0.8.1, seqloc >= 0.0,
                        QuickCheck, random

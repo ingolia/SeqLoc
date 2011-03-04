@@ -70,7 +70,7 @@ junctions sploc = zipWith junction contigs (drop 1 contigs)
 -- transcript identifier, along with the genomic location of the
 -- processed transcript and an optional coding sequence on that
 -- transcript.
-data Transcript = Transcript { geneId -- ^ Gene or locus name for a collection of transcripts
+data Transcript = Transcript { geneId :: !SeqName -- ^ Gene or locus name for a collection of transcripts
                              , trxId :: !SeqName -- ^ Specific transcript identifier
                              , location :: !SpliceSeqLoc -- ^ Sequence location of processed transcript
                              , cds :: !(Maybe Loc.ContigLoc) -- ^ Location of CDS on the transcript

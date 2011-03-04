@@ -2,24 +2,22 @@
 
 module Bio.SeqLoc.GTF
        ( readGtfTranscripts
+       , transcriptToGtf
        )
        where 
 
 import Control.Applicative
 import Control.Monad
-import qualified Data.ByteString as BSW
 import qualified Data.ByteString.Char8 as BS
 import Data.ByteString.Internal (c2w)
 import Data.List
 import Data.Maybe
 
-import qualified Data.Attoparsec.Char8 as AP (isDigit_w8, isSpace_w8)
---import qualified Data.Attoparsec.Char8 as AP
+import qualified Data.Attoparsec.Char8 as AP (isSpace_w8)
 import qualified Data.Attoparsec.Zepto as ZP
 import qualified Data.HashMap.Strict as HM
 import qualified Data.Iteratee as Iter
 import qualified Data.Iteratee.Char as IterChar
---import qualified Data.Iteratee.Exception as Iter
 
 import Bio.SeqLoc.LocRepr
 import qualified Bio.SeqLoc.Location as Loc
@@ -29,6 +27,34 @@ import qualified Bio.SeqLoc.SpliceLocation as SpLoc
 import Bio.SeqLoc.Strand
 import Bio.SeqLoc.Transcript
 
+import Bio.SeqLoc.ZeptoUtils
+
+transcriptToGtf :: BS.ByteString -> Transcript -> BS.ByteString
+transcriptToGtf src trx = BS.unlines $ exonLines ++ cdsLines
+  where exonLines = splocLines src trx "exon" (location trx)
+        cdsLines = maybe [] (splocLines src trx "CDS") $! cdsLocation trx
+        
+splocLines :: BS.ByteString -> Transcript -> BS.ByteString -> SpliceSeqLoc -> [BS.ByteString]
+splocLines src trx ftype (OnSeq refname sploc) = map contigLines . Loc.toContigs $ sploc
+  where contigLines contig = let (start0, end0) = Loc.bounds contig
+                                 strchr = case Loc.strand contig of 
+                                   Fwd -> "+"
+                                   RevCompl -> "-"
+                             in unfields [ unSeqName refname
+                                         , src
+                                         , ftype
+                                         , BS.pack . show . Pos.unOffset . (+ 1) $ start0
+                                         , BS.pack . show . Pos.unOffset . (+ 1) $ end0
+                                         , "0.0"
+                                         , strchr
+                                         , "."
+                                         , attrs
+                                         ]
+        attrs = BS.concat [ "gene_id \"", unSeqName . geneId $ trx
+                          , "\"; transcript_id \"", unSeqName . trxId $ trx
+                          , "\"; " ]
+        unfields = BS.intercalate (BS.singleton '\t')
+                
 readGtfTranscripts :: FilePath -> IO [Transcript]
 readGtfTranscripts = Iter.fileDriver gtfTrxsIter >=> 
                      either (ioError . userError) return . mkTranscripts
@@ -68,7 +94,8 @@ cdsLoc (OnSeq trxname trxloc) cdses@(_:_) = do
   when (trxname /= seqname) $ Left . unwords $ [ "CDS sequence name mismatch", show trxname, show seqname ]
   contigs <- sortclocs rawcontigs
   (contigIn0:contigInRest) <- mapM (cdsIntoTranscript trxloc) contigs
-  liftM Just $! foldM mergeCLocs contigIn0 contigInRest
+  cloc <- foldM mergeCLocs contigIn0 contigInRest
+  return $! Just $! Loc.extend (0, 3) cloc -- Include the stop codon
   where sortclocs clocs = maybe badClocs Right . sortContigs $ clocs
           where badClocs = Left . unwords $ [ "bad transcript CDSes" ] ++ map (BS.unpack . repr) clocs  
 
@@ -131,30 +158,13 @@ gtfline = do seqname <- field
              str <- strand
              _frame <- dropField
              gene <- attr "gene_id" <* ZP.string (BS.pack "; ")
-             trx <- attr "transcript_id" <* ZP.string (BS.pack "; ")
+             trx <- attr "transcript_id" <* ZP.string (BS.pack ";")
              let name = SeqName . BS.copy $ seqname
                  loc = Loc.fromBoundsStrand (start - 1) (end - 1) str
              return $! GtfLine gene trx ftype (OnSeq name loc)
-
-strand :: ZP.Parser Strand
-strand = ((ZP.string "+\t" *> return Fwd) <|>
-          (ZP.string "-\t" *> return RevCompl))
 
 attr :: String -> ZP.Parser BS.ByteString
 attr name = ZP.string (BS.pack name) *> ZP.takeWhile AP.isSpace_w8 *> ZP.string "\"" *>
             ZP.takeWhile (/= c2w '\"') <* ZP.string "\""
 
-decfield :: (Integral a) => ZP.Parser a
-decfield = decimal <* ZP.string "\t"
-
-field :: ZP.Parser BS.ByteString
-field = ZP.takeWhile (/= c2w '\t') <* ZP.string "\t"
-
-dropField :: ZP.Parser ()
-dropField = ZP.takeWhile (/= c2w '\t') *> ZP.string "\t" *> return ()
-
-decimal :: (Integral a) => ZP.Parser a
-decimal = decode <$> ZP.takeWhile (AP.isDigit_w8)
-  where decode = fromIntegral . BSW.foldl' step (0 :: Int)
-        step a w = a * 10 + fromIntegral (w - 48)
                            
