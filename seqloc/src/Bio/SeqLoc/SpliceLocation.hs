@@ -31,7 +31,7 @@ import Bio.SeqLoc.LocRepr
 import Bio.SeqLoc.Location
 import qualified Bio.SeqLoc.Position as Pos
 import Bio.SeqLoc.Strand
-import qualified Bio.SeqLoc.SeqData as SeqData
+import qualified Bio.SeqLoc.SeqLike as SeqLike
 
 -- | General (disjoint) sequence region consisting of a concatenated
 -- set of one or more contiguous regions.
@@ -82,8 +82,8 @@ instance Location SpliceLoc where
   strand = strand . contig
   length = foldl' (\len c -> len + length c) 0 . contigs
   bounds = (minimum *** maximum) . unzip . map bounds . contigs  
-  seqData sequ = liftM SeqData.concat . mapM (seqData sequ) . contigs
-  seqDataPad sequ = SeqData.concat . map (seqDataPad sequ) . contigs
+  seqData sequ = liftM SeqLike.concat . mapM (seqData sequ) . contigs
+  seqDataPad sequ = SeqLike.concat . map (seqDataPad sequ) . contigs
   posInto pos = posIntoContigs pos . contigs
   posOutof pos = posOutofContigs pos . contigs
   startPos = startPos . firstContig

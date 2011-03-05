@@ -1,7 +1,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 
-module Bio.SeqLoc.SeqData
-       ( SeqData(..)
+module Bio.SeqLoc.SeqLike
+       ( SeqLike(..)
        )
        where 
 
@@ -12,7 +12,7 @@ import qualified Data.ByteString.Lazy.Char8 as LBS
 import qualified Data.List as L
 import Data.Maybe
 
-class SeqData s where
+class SeqLike s where
   -- | Length of sequence data
   length :: (Integral n) => s -> n
   
@@ -40,7 +40,7 @@ class SeqData s where
   
   concat :: [s] -> s
 
-instance SeqData [Char] where
+instance SeqLike [Char] where
   length = L.genericLength
   ntAt l p | p < 0 = Nothing
            | otherwise = listToMaybe . drop (fromIntegral p) $ l
@@ -65,7 +65,7 @@ listSubseqPad istart ilen sequ
           start = fromIntegral istart
           len = fromIntegral ilen
 
-instance SeqData BS.ByteString where      
+instance SeqLike BS.ByteString where      
   length = fromIntegral . BS.length
   ntAt sequ ipos | pos >= 0 && pos < BS.length sequ = Just $ BS.index sequ pos
                  | otherwise = Nothing
@@ -93,7 +93,7 @@ bsSubseqPad istart ilen sequ
           start = fromIntegral istart
           len = fromIntegral ilen
 
-instance SeqData LBS.ByteString where
+instance SeqLike LBS.ByteString where
     length = fromIntegral . LBS.length
     ntAt = lbsNtAt
     subseq = lbsSubseq

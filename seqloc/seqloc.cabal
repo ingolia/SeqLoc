@@ -14,7 +14,7 @@ Flag Tests
 
 Library
   Exposed-modules:     Bio.SeqLoc.Strand, Bio.SeqLoc.Position,
-                       Bio.SeqLoc.SeqData, Bio.SeqLoc.Location,
+                       Bio.SeqLoc.SeqLike, Bio.SeqLoc.Location,
                        Bio.SeqLoc.SpliceLocation,
                        Bio.SeqLoc.OnSeq,
                        Bio.SeqLoc.LocRepr,
@@ -28,11 +28,11 @@ Executable test-seqloc
      Buildable: False
   Main-is:             TestMain.hs
   Other-modules:       Bio.SeqLoc.Strand, Bio.SeqLoc.Position,
-                       Bio.SeqLoc.SeqData, Bio.SeqLoc.Location,
+                       Bio.SeqLoc.SeqLike, Bio.SeqLoc.Location,
                        Bio.SeqLoc.SpliceLocation,
                        Bio.SeqLoc.OnSeq,
                        Bio.SeqLoc.LocRepr
   Build-depends:       base, bytestring, haskell98, attoparsec >= 0.8.5,
                        QuickCheck, random
   Hs-Source-Dirs:      src, test
-  Ghc-options:         -prof -auto-all -fhpc -O2 -Wall
+  Ghc-options:         -prof -auto-all -O2 -Wall

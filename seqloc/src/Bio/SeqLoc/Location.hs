@@ -29,7 +29,7 @@ import qualified Data.Attoparsec.Zepto as ZP
 import Bio.SeqLoc.LocRepr
 import qualified Bio.SeqLoc.Position as Pos
 import Bio.SeqLoc.Strand
-import qualified Bio.SeqLoc.SeqData as SeqData
+import qualified Bio.SeqLoc.SeqLike as SeqLike
 
 class Location l where
   strand :: l -> Strand
@@ -50,15 +50,15 @@ class Location l where
   -- 'startPos'.
   endPos :: l -> Pos.Pos
 
-  -- | Extract 'Just' the nucleotide 'SeqData' for the sequence
+  -- | Extract 'Just' the nucleotide 'SeqLike' for the sequence
   -- location, or 'Nothing' if f any part of the location lies outside
   -- the bounds of the sequence.
-  seqData :: (SeqData.SeqData s, Stranded s) => s -> l -> Maybe s
+  seqData :: (SeqLike.SeqLike s, Stranded s) => s -> l -> Maybe s
   
   -- | As 'seqData', extract the nucleotide subsequence for the
   -- location, but any positions in the location lying outside the
   -- bounds of the sequence are returned as @N@.
-  seqDataPad :: (SeqData.SeqData s, Stranded s) => s -> l -> s
+  seqDataPad :: (SeqLike.SeqLike s, Stranded s) => s -> l -> s
   
   -- | Given a sequence position and a sequence location relative to
   -- the same sequence, compute a new position representing the
@@ -142,8 +142,8 @@ instance LocRepr ContigLoc where
 instance Location ContigLoc where
   strand = clocStrand
   length = clocLength
-  seqData sequ (ContigLoc seq5 len str) = liftM (stranded str) . (SeqData.subseq seq5 len) $ sequ
-  seqDataPad sequ (ContigLoc seq5 len str) = (stranded str) . (SeqData.subseqPad seq5 len) $ sequ
+  seqData sequ (ContigLoc seq5 len str) = liftM (stranded str) . (SeqLike.subseq seq5 len) $ sequ
+  seqDataPad sequ (ContigLoc seq5 len str) = (stranded str) . (SeqLike.subseqPad seq5 len) $ sequ
   posInto = clocPosInto
   posOutof = clocPosOutof
   bounds (ContigLoc seq5 len _) = (seq5, seq5 + len - 1)

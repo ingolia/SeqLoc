@@ -2,8 +2,9 @@
 
 {-| Data type for a sequence position.
 
-Zero-based 'Offset' / 'Int64' indices are used throughout, to
-facilitate direct use of indexing functions on 'SeqData'.
+Zero-based 'Offset'indices are used throughout, to facilitate direct
+use of indexing functions on 'SeqData'.  
+
 -}
 
 module Bio.SeqLoc.Position ( 
@@ -28,7 +29,7 @@ import qualified Data.Attoparsec.Char8 as AP (isDigit_w8)
 import qualified Data.Attoparsec.Zepto as ZP
 
 import Bio.SeqLoc.LocRepr
-import Bio.SeqLoc.SeqData
+import Bio.SeqLoc.SeqLike
 import Bio.SeqLoc.Strand
 
 -- | Unstranded offset in a sequence
@@ -64,7 +65,7 @@ slide (Pos off str) doff = Pos (off + doff) str
 
 -- | Extract 'Just' the item at a specific sequence position, or
 -- 'Nothing' if the position lies outside the bounds of the sequence.
-atPos :: (SeqData s) => s -> Pos -> Maybe Char
+atPos :: (SeqLike s) => s -> Pos -> Maybe Char
 atPos sequ (Pos off str) = liftM (stranded str) . ntAt sequ $ off
 
 {-# SPECIALIZE atPos :: String -> Pos -> Maybe Char #-}

@@ -23,7 +23,7 @@ import Bio.SeqLoc.OnSeq
 import qualified Bio.SeqLoc.Position as Pos
 import qualified Bio.SeqLoc.SpliceLocation as SpLoc
 import Bio.SeqLoc.Strand
-import qualified Bio.SeqLoc.SeqData as SeqData
+import qualified Bio.SeqLoc.SeqLike as SeqLike
 
 main :: IO ()
 main = mapM_ runTest tests
