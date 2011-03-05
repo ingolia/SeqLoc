@@ -12,7 +12,8 @@ module Bio.SeqLoc.SpliceLocation (
   -- * Sequence locations
   SpliceLoc
   , fromContigs
-  , locOutof
+  , locOutof, locInto
+  , mergeContigs, mergeAdjContigs
   ) where 
 
 import Prelude hiding (length)
@@ -96,7 +97,27 @@ instance Location SpliceLoc where
   toContigs = contigs
 
 locOutof :: (Location l) => SpliceLoc -> l -> Maybe SpliceLoc
-locOutof sploc outer = mapM (flip clocOutof outer) (toContigs sploc) >>= fromContigs . concat . map toContigs
+locOutof sploc outer = mapM (flip clocOutof outer) (toContigs sploc) >>= 
+                       fromContigs . concat . map toContigs
+
+locInto :: (Location l) => SpliceLoc -> l -> Maybe SpliceLoc
+locInto sploc outer = mapM (flip clocInto outer) (toContigs sploc) >>=
+                      fromContigs . mergeContigs . concat . map toContigs
+
+mergeContigs :: [ContigLoc] -> [ContigLoc]
+mergeContigs [] = []
+mergeContigs [clast] = [clast]
+mergeContigs (cprev:rest@(_:_)) = case mergeContigs rest of
+  [] -> error $ "mergeContigs: empty rest"
+  mergerest@(cnext:afternext) -> case mergeAdjContigs cprev cnext of
+    Just cmerge -> cmerge : afternext
+    Nothing     -> cprev : mergerest
+
+mergeAdjContigs :: ContigLoc -> ContigLoc -> Maybe ContigLoc
+mergeAdjContigs clocprev clocnext 
+  | startPos clocnext == endPos (extend (0, 1) clocprev)
+     = Just $! fromPosLen (startPos clocprev) (length clocprev + length clocnext)
+  | otherwise = Nothing
 
 contigs :: SpliceLoc -> [ContigLoc]
 contigs (SpliceLocLast c) = [c]
