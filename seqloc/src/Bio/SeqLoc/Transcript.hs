@@ -5,7 +5,7 @@ module Bio.SeqLoc.Transcript
        , fromDonorAcceptor, donor, acceptor
        , junctions
          -- * Representation of transcript
-       , Transcript(..)         
+       , Transcript(..), utr5, utr3
        , cdsLocation
        , sortContigs
        )
@@ -66,6 +66,8 @@ junctions sploc = zipWith junction contigs (drop 1 contigs)
                              len = 1 + abs (Pos.offset p3 - Pos.offset p5)
                          in Junction $ Loc.fromPosLen p5 len
 
+
+
 -- | Representation of a genomic transcript, with a gene and a
 -- transcript identifier, along with the genomic location of the
 -- processed transcript and an optional coding sequence on that
@@ -76,6 +78,27 @@ data Transcript = Transcript { geneId :: !SeqName -- ^ Gene or locus name for a 
                              , cds :: !(Maybe Loc.ContigLoc) -- ^ Location of CDS on the transcript
                              } deriving (Show)
                                         
+-- | 'Just' the location of the 5' UTR on the transcript, or 'Nothing'
+-- if there is no 'cds' on the transcript or if the 'cds' location
+-- begins at the first nucleotide of the transcript--if a region is
+-- returned it will have positive length.
+utr5 :: Transcript -> Maybe Loc.ContigLoc
+utr5 trx = cds trx >>= utr5loc
+  where utr5loc cdsloc = case Loc.startPos cdsloc of
+          (Pos.Pos startoff Fwd) | startoff > 0 -> Just $! Loc.fromBoundsStrand 0 (startoff - 1) Fwd
+          _ -> Nothing
+          
+-- | 'Just' the location of the 3' UTR on the transcript, or 'Nothing'
+-- if there is no 'cds' on the transcript or if the 'cds' location
+-- ends at the last nucleotide of the transcript--if a region is
+-- returned it will have positive length.
+utr3 :: Transcript -> Maybe Loc.ContigLoc
+utr3 trx = cds trx >>= utr3loc
+  where utr3loc cdsloc = case Loc.endPos cdsloc of
+          (Pos.Pos endoff Fwd) | endoff < trxlast -> Just $! Loc.fromBoundsStrand (endoff + 1) trxlast Fwd
+          _ -> Nothing
+        trxlast = snd . Loc.bounds . unOnSeq . location $ trx
+
 -- | Genomic location of CDS within the transcript
 cdsLocation :: Transcript -> Maybe SpliceSeqLoc
 cdsLocation trx = cds trx >>= liftM (OnSeq name) . flip Loc.clocOutof loc

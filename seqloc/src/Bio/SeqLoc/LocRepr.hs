@@ -1,5 +1,5 @@
 module Bio.SeqLoc.LocRepr
-       ( LocRepr(..)
+       ( LocRepr(..), reprStr
        , unreprMaybe, unreprEither, unreprErr
        )       
        where
@@ -11,6 +11,9 @@ import qualified Data.Attoparsec.Zepto as ZP
 class LocRepr l where
   repr :: l -> BS.ByteString
   unrepr :: ZP.Parser l
+  
+reprStr :: (LocRepr l) => l -> String
+reprStr = BS.unpack . repr
   
 unreprMaybe :: (LocRepr l) => BS.ByteString -> Maybe l
 unreprMaybe = either (const Nothing) Just . ZP.parse unrepr
