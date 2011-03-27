@@ -16,7 +16,6 @@ import System.Random
 
 import Test.QuickCheck
 
--- import qualified Bio.SeqLoc.LocMap as LM
 import Bio.SeqLoc.LocRepr
 import qualified Bio.SeqLoc.Location as Loc
 import Bio.SeqLoc.OnSeq
@@ -70,9 +69,6 @@ tests = [ T "Strand revCompl"               test_Strand_revCompl
         , T "SpLoc repr"                    test_SpLoc_repr
         , T "SpLoc termini/revCompl"        property_SpLoc_terminiRevCompl
         , T "SpLoc termini/extend"          property_SpLoc_terminiExtend
-          
---        , T "LocMap Within"                 property_LocMap_Within
---        , T "LocMap Overlaps"               property_LocMap_Overlaps
         ]
 
 
@@ -378,13 +374,6 @@ runTest (T name test) = do
   quickCheckWith args test
     where args = stdArgs { maxDiscard = 100000 }
 
-{-
-runBigTest :: Test -> IO ()
-runBigTest (T name test) = do
-  putStr $ name ++ replicate (40 - length name) '.' ++ "  "
-  check (defaultConfig {configMaxTest = 1000, configMaxFail = 10000 } ) test
--}
-
 -- | Constrained position generators
 
 genOffset :: Gen Pos.Offset
@@ -401,57 +390,3 @@ genPositiveOffset = do scale <- chooseInteger (1, 10)
     where chooseInteger :: (Integer, Integer) -> Gen Integer
           chooseInteger = choose
 
--- Bio.BioSeq.LocMap
-
-{-
-
-class Checkable a where
-    addCheck :: a -> a
-
-instance Checkable () where addCheck = id
-instance Checkable Int where addCheck = id
-instance Checkable Char where addCheck = id
-
-instance (Checkable a, Checkable b) => Checkable (a, b) where 
-    addCheck (x, y) = (addCheck x, addCheck y)
-
-instance (Checkable a) => Checkable [a] where
-    addCheck = map addCheck 
-
-instance (Checkable a, Checkable b) => Checkable (a -> b) where
-    addCheck f = \x -> (addCheck . f) (addCheck x)
-
-instance Checkable (LM.LocMap a) where
-    addCheck x = case LM.checkInvariants x of
-                   [] -> x
-                   errs -> error $ unlines errs
-
-instance Checkable Int64 where addCheck = id
-instance Checkable Pos.Pos where addCheck = id
-instance Checkable Loc.Loc where addCheck = id
-
-genLocs :: Gen [Loc.Loc]
-genLocs = sized $ \sz -> choose (0, sz) >>= vector
-
-property_LocMap_Within :: Pos.Pos -> Property
-property_LocMap_Within seqpos 
-    = forAll genLocs $ \locs ->
-      forAll genPositiveInt64 $ \zonesize ->
-      let !locents = zip locs ['0'..]
-          !locmap = (addCheck LM.fromList) zonesize locents
-          !hits = filter (Loc.isWithin seqpos . fst) locents
-          !maphits = (addCheck LM.lookupWithin) seqpos locmap
-      in -- collect (length hits) $ 
-         sort hits == sort maphits
-
-property_LocMap_Overlaps :: Loc.Loc -> Property
-property_LocMap_Overlaps loc
-    = forAll genLocs $ \locs ->
-      forAll genPositiveInt64 $ \zonesize ->
-      let !locents = zip locs ['0'..]
-          !locmap = (addCheck LM.fromList) zonesize locents
-          !hits = filter (Loc.overlaps loc . fst) locents
-          !maphits = (addCheck LM.lookupOverlaps) loc locmap
-      in -- collect (length hits) $ 
-        sort hits == sort maphits
--}

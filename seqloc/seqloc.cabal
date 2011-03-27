@@ -1,5 +1,5 @@
 Name:                seqloc
-Version:             0.0
+Version:             0.1
 Cabal-Version:       >= 1.2
 License:             BSD3
 Author:              Nick Ingolia
@@ -35,4 +35,4 @@ Executable test-seqloc
   Build-depends:       base, bytestring, haskell98, attoparsec >= 0.8.5,
                        QuickCheck, random
   Hs-Source-Dirs:      src, test
-  Ghc-options:         -prof -auto-all -O2 -Wall
+  Ghc-options:         -O2 -Wall
