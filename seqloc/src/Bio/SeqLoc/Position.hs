@@ -24,6 +24,7 @@ import Control.Applicative
 import Control.Monad (liftM)
 import qualified Data.ByteString as BSW
 import qualified Data.ByteString.Char8 as BS
+import Data.Int (Int64)
 
 import qualified Data.Attoparsec.Char8 as AP (isDigit_w8)
 import qualified Data.Attoparsec.Zepto as ZP
@@ -33,7 +34,7 @@ import Bio.SeqLoc.SeqLike
 import Bio.SeqLoc.Strand
 
 -- | Unstranded offset in a sequence
-newtype Offset = Offset { unOffset :: Int } deriving (Eq, Ord, Show, Read, Num, Real, Enum, Integral)
+newtype Offset = Offset { unOffset :: Int64 } deriving (Eq, Ord, Show, Read, Num, Real, Enum, Integral)
 
 instance LocRepr Offset where
   repr = BS.pack . show . unOffset
