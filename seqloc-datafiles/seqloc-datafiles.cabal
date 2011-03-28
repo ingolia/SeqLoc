@@ -1,5 +1,5 @@
 Name:                seqloc-datafiles
-Version:             0.0
+Version:             0.1
 Cabal-Version:       >= 1.2
 License:             BSD3
 Author:              Nick Ingolia
@@ -19,7 +19,7 @@ Library
                        attoparsec >= 0.8.5, hashable, unordered-containers,
                        iteratee >= 0.8.1, seqloc >= 0.0
   Hs-Source-Dirs:      src
-  Ghc-options:         -O2 -Wall
+  Ghc-options:         -Wall
 
 Executable gtf-to-bed
   Main-is:             GtfToBed.hs
@@ -28,7 +28,7 @@ Executable gtf-to-bed
                        attoparsec >= 0.8.5, hashable, unordered-containers,
                        iteratee >= 0.8.1, seqloc >= 0.0, transformers, monads-tf
   Hs-Source-Dirs:      src
-  Ghc-options:         -prof -auto-all -O2 -Wall
+  Ghc-options:         -Wall
   C-Sources:           src/rtsopts.c
 
 Executable test-gtf
@@ -41,7 +41,7 @@ Executable test-gtf
                        iteratee >= 0.8.1, seqloc >= 0.0,
                        QuickCheck, random
   Hs-Source-Dirs:      src, test
-  Ghc-options:         -prof -auto-all -O2 -Wall
+  Ghc-options:         -Wall -rtsopts
   C-Sources:           src/rtsopts.c
 
 Executable test-bed
@@ -54,4 +54,17 @@ Executable test-bed
                        iteratee >= 0.8.1, seqloc >= 0.0,
                        QuickCheck, random
   Hs-Source-Dirs:      src, test
-  Ghc-options:         -prof -auto-all -O2 -Wall
+  Ghc-options:         -Wall
+
+Executable gtf-introns
+  if !flag(Tests)
+     Buildable: False
+  Main-is:             GtfIntrons.hs
+  Other-modules:       Bio.SeqLoc.GTF, Bio.SeqLoc.TranscriptTable, Bio.SeqLoc.ZeptoUtils
+  Build-depends:       base, bytestring, haskell98,
+                       attoparsec >= 0.8.5, hashable, unordered-containers,
+                       iteratee >= 0.8.1, seqloc >= 0.0,
+                       QuickCheck, random
+  Hs-Source-Dirs:      src, test
+  Ghc-options:         -Wall -rtsopts
+  C-Sources:           src/rtsopts.c

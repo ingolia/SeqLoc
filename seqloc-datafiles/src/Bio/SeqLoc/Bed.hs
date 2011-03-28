@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
+{-| Utilities for reading and writing BED format gene annotations -}
 module Bio.SeqLoc.Bed
        ( readBedTranscripts
        , bedZP, bedTranscriptEnum
@@ -27,10 +28,16 @@ import Bio.SeqLoc.Transcript
 
 import Bio.SeqLoc.ZeptoUtils
 
+-- | Convert a 'Transcript' to a BED annotation line.
 transcriptToBedStd :: Transcript -> BS.ByteString
 transcriptToBedStd = transcriptToBed "0" "0"
 
-transcriptToBed :: BS.ByteString -> BS.ByteString -> Transcript -> BS.ByteString
+-- | Convert a 'Transcript' to a BED annotation line, specifying the
+-- /score/ and /itemRGB/ fields.
+transcriptToBed :: BS.ByteString -- ^ score
+                   -> BS.ByteString -- ^ itemRGB
+                   -> Transcript -- ^ transcript
+                   -> BS.ByteString
 transcriptToBed score rgb trx = unfields fields
   where unfields = BS.intercalate (BS.singleton '\t')
         fields = [ unSeqName chrom
@@ -56,9 +63,13 @@ transcriptToBed score rgb trx = unfields fields
         blockStarts = map (subtract chromStart . Loc.offset5) contigs
         unCommaList = BS.concat . map (flip BS.append (BS.singleton ',') . repr)
 
+-- | Read all BED format annotations in a BED file
 readBedTranscripts :: FilePath -> IO [Transcript]
 readBedTranscripts = Iter.fileDriver (bedTranscriptEnum Iter.stream2list)
                      
+-- | Iteratee to convert an 'Iter.Iteratee' over a 'BS.ByteString',
+-- such as the standard 'Iter.fileDriver', into an iteratee over a
+-- list of 'Transcript' annotations from the file.
 bedTranscriptEnum :: (Monad m) => Iter.Iteratee [Transcript] m a -> Iter.Iteratee BS.ByteString m a
 bedTranscriptEnum = Iter.joinI . IterChar.enumLinesBS . Iter.joinI . bedLineEnum
 
@@ -66,6 +77,8 @@ bedLineEnum :: (Monad m) => Iter.Enumeratee [BS.ByteString] [Transcript] m a
 bedLineEnum = Iter.convStream $ Iter.head >>= liftM (: []) . handleErr . ZP.parse bedZP
   where handleErr = either (Iter.throwErr . Iter.iterStrExc) return 
 
+-- | Minimalistic 'ZP.Parser'-style parser for a BED format line, not
+-- including the trailing newline.
 bedZP :: ZP.Parser Transcript
 bedZP = do chrom <- field -- The name of the chromosome
            chromStart <- decfield -- The starting position of the

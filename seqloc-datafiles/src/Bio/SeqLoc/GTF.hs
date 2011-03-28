@@ -1,5 +1,7 @@
 {-# LANGUAGE BangPatterns, MagicHash, OverloadedStrings, UnboxedTuples #-}
 
+{-| Utilities for reading and writing GTF format gene annotations -}
+
 module Bio.SeqLoc.GTF
        ( readGtfTranscripts
        , transcriptToGtf
@@ -29,6 +31,9 @@ import Bio.SeqLoc.Transcript
 
 import Bio.SeqLoc.ZeptoUtils
 
+-- | Convert a 'Transcript' to a string consisting of GTF lines. These
+-- lines will contain @exon@ lines for the transcript, as well as
+-- @CDS@ lines if the 'Transcript' has a 'cds'.
 transcriptToGtf :: BS.ByteString -> Transcript -> BS.ByteString
 transcriptToGtf src trx = BS.unlines $ exonLines ++ cdsLines
   where exonLines = splocLines src trx "exon" (location trx)
@@ -55,6 +60,13 @@ splocLines src trx ftype (OnSeq refname sploc) = map contigLines . Loc.toContigs
                           , "\"; " ]
         unfields = BS.intercalate (BS.singleton '\t')
                 
+-- | Read a GTF annotation file. The entire file is read at once,
+-- because a single annotated transcript can span many lines in a GTF
+-- file that are not required to occur in any specific order. The
+-- transcript 'SpliceSeqLoc' transcript location is assembled from
+-- @exon@ annotations and any CDS location is then produced from @CDS@
+-- annotations, with an error occurring if the CDS is not a single
+-- contiguous location within the transcript.
 readGtfTranscripts :: FilePath -> IO [Transcript]
 readGtfTranscripts = Iter.fileDriver gtfTrxsIter >=> 
                      either (ioError . userError) return . mkTranscripts
@@ -157,14 +169,19 @@ gtfline = do seqname <- field
              _score <- dropField
              str <- strand
              _frame <- dropField
-             gene <- attr "gene_id" <* ZP.string (BS.pack "; ")
-             trx <- attr "transcript_id" <* ZP.string (BS.pack ";")
+             gene <- attr "gene_id"
+             trx <- attr "transcript_id"
              let name = SeqName . BS.copy $ seqname
                  loc = Loc.fromBoundsStrand (start - 1) (end - 1) str
              return $! GtfLine gene trx ftype (OnSeq name loc)
 
 attr :: String -> ZP.Parser BS.ByteString
-attr name = ZP.string (BS.pack name) *> ZP.takeWhile AP.isSpace_w8 *> ZP.string "\"" *>
-            ZP.takeWhile (/= c2w '\"') <* ZP.string "\""
+attr name = ZP.takeWhile AP.isSpace_w8 *>
+            ZP.string (BS.pack name) *> 
+            ZP.takeWhile AP.isSpace_w8 *> 
+            ZP.string "\"" *>
+            ZP.takeWhile (/= c2w '\"') <* 
+            ZP.string "\";"
+            
 
                            
