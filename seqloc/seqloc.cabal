@@ -4,12 +4,12 @@ Cabal-Version:       >= 1.2
 Synopsis:            Handle sequence locations for bioinformatics
 Description:         Handle sequence locations for bioinformatics
 Homepage:            http://www.ingolia-lab.org/software/seqloc/
-License:             BSD3
+License:             MIT
 License-file:        LICENSE
 Author:              Nick Ingolia
 Maintainer:          nick@ingolia.org
 Build-Type:          Simple
-Cabal-Version:       >= 1.2
+Cabal-Version:       >= 1.4
 
 Category:            Bioinformatics
 
