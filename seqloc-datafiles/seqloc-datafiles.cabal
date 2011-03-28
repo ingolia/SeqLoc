@@ -15,7 +15,7 @@ Flag Tests
 Library
   Exposed-modules:     Bio.SeqLoc.Bed, Bio.SeqLoc.GTF, Bio.SeqLoc.TranscriptTable
   Other-modules:       Bio.SeqLoc.ZeptoUtils
-  Build-depends:       base, bytestring, haskell98,
+  Build-depends:       base >= 4.3 && < 5, bytestring, haskell98,
                        attoparsec >= 0.8.5, hashable, unordered-containers,
                        iteratee >= 0.8.1, seqloc >= 0.0
   Hs-Source-Dirs:      src
@@ -24,7 +24,7 @@ Library
 Executable gtf-to-bed
   Main-is:             GtfToBed.hs
   Other-modules:       Bio.SeqLoc.GTF, Bio.SeqLoc.Bed, Bio.SeqLoc.ZeptoUtils
-  Build-depends:       base, bytestring, haskell98,
+  Build-depends:       base >= 4.3 && < 5, bytestring, haskell98,
                        attoparsec >= 0.8.5, hashable, unordered-containers,
                        iteratee >= 0.8.1, seqloc >= 0.0, transformers, monads-tf
   Hs-Source-Dirs:      src
@@ -36,7 +36,7 @@ Executable test-gtf
      Buildable: False
   Main-is:             TestGtf.hs
   Other-modules:       Bio.SeqLoc.GTF, Bio.SeqLoc.TranscriptTable, Bio.SeqLoc.ZeptoUtils
-  Build-depends:       base, bytestring, haskell98,
+  Build-depends:       base >= 4.3 && < 5, bytestring, haskell98,
                        attoparsec >= 0.8.5, hashable, unordered-containers,
                        iteratee >= 0.8.1, seqloc >= 0.0,
                        QuickCheck, random
@@ -49,7 +49,7 @@ Executable test-bed
      Buildable: False
   Main-is:             TestBed.hs
   Other-modules:       Bio.SeqLoc.Bed, Bio.SeqLoc.TranscriptTable, Bio.SeqLoc.ZeptoUtils
-  Build-depends:       base, bytestring, haskell98,
+  Build-depends:       base >= 4.3 && < 5, bytestring, haskell98,
                        attoparsec >= 0.8.5, hashable, unordered-containers,
                        iteratee >= 0.8.1, seqloc >= 0.0,
                        QuickCheck, random
@@ -61,7 +61,7 @@ Executable gtf-introns
      Buildable: False
   Main-is:             GtfIntrons.hs
   Other-modules:       Bio.SeqLoc.GTF, Bio.SeqLoc.TranscriptTable, Bio.SeqLoc.ZeptoUtils
-  Build-depends:       base, bytestring, haskell98,
+  Build-depends:       base >= 4.3 && < 5, bytestring, haskell98,
                        attoparsec >= 0.8.5, hashable, unordered-containers,
                        iteratee >= 0.8.1, seqloc >= 0.0,
                        QuickCheck, random
