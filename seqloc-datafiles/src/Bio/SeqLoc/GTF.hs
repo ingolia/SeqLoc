@@ -87,7 +87,7 @@ mkTranscripts trxs = go [] allTrxs
 mkTranscript :: BS.ByteString -> [ContigSeqLoc] -> [ContigSeqLoc] -> BS.ByteString -> Either String Transcript
 mkTranscript trx exons cdses gene = moderr $ do loc <- exonLoc exons
                                                 cdsloc <- cdsLoc loc cdses
-                                                return $! Transcript (SeqName gene) (SeqName trx) loc cdsloc
+                                                return $ Transcript (SeqName gene) (SeqName trx) loc cdsloc
   where moderr = either (Left . (("Transcript " ++ show trx ++ ": ") ++)) Right
                                                 
 exonLoc :: [ContigSeqLoc] -> Either String SpliceSeqLoc

@@ -12,6 +12,10 @@ import System.IO
 
 import Bio.SeqLoc.Bed
 import Bio.SeqLoc.GTF
+import qualified Bio.SeqLoc.Location as Loc
+import Bio.SeqLoc.LocRepr
+import Bio.SeqLoc.Strand
+import Bio.SeqLoc.Transcript
 
 main :: IO ()
 main = getArgs >>= handleOpt . getOpt RequireOrder optDescrs
@@ -23,17 +27,23 @@ main = getArgs >>= handleOpt . getOpt RequireOrder optDescrs
                           hPutStrLn stderr errs
 
 doGtfToBed :: FilePath -> Conf -> IO ()
-doGtfToBed gtf conf = readGtfTranscripts gtf >>= writeTranscriptsOut
+doGtfToBed gtf conf = readGtfTranscripts gtf >>= writeTranscriptsOut . map adjustStop
   where writeTranscriptsOut trxs = withOutHandle conf $ \h -> 
           mapM_ (BS.hPutStrLn h . transcriptToBedStd) trxs
+        adjustStop = if confStopIncluded conf then removeDoubleStop else id
+        removeDoubleStop trx = trx { cds = cds trx >>= shortenLoc }
+        shortenLoc l = Loc.clocOutof (Loc.fromBoundsStrand 0 end Fwd) l
+          where end = max 0 $ Loc.length l - 4
 
 withOutHandle :: Conf -> (Handle -> IO a) -> IO a
 withOutHandle conf m = maybe (m stdout) (\outname -> withFile outname WriteMode m) $ confOutput conf
 
 data Conf = Conf { confOutput :: !(Maybe FilePath) 
+                 , confStopIncluded :: !Bool
                  } deriving (Show)
 
 data Arg = ArgOutput { unArgOutput :: !String }
+         | ArgStopIncluded
          deriving (Show, Read, Eq, Ord)
 
 argOutput :: Arg -> Maybe String
@@ -41,11 +51,13 @@ argOutput (ArgOutput del) = Just del
 argOutput _ = Nothing
 
 optDescrs :: [OptDescr Arg]
-optDescrs = [ Option ['o'] ["output"] (ReqArg ArgOutput "OUTFILE") "Output filename"
+optDescrs = [ Option ['o'] ["output"]        (ReqArg ArgOutput "OUTFILE") "Output filename"
+            , Option ['s'] ["stop-included"] (NoArg ArgStopIncluded)      "GTF file includes stop codon in CDS"
             ]
 
 argsToConf :: [Arg] -> Either String Conf
 argsToConf = runReaderT conf
     where conf = Conf <$> 
-                 findOutput
+                 findOutput <*>
+                 (ReaderT $ return . elem ArgStopIncluded)
           findOutput = ReaderT $ return . listToMaybe . mapMaybe argOutput

@@ -4,6 +4,7 @@ Cabal-Version:       >= 1.4
 Synopsis:            Read and write BED and GTF format genome annotations
 Description:         Read and write BED and GTF format genome annotations
 License:             MIT
+License-File:        LICENSE
 Author:              Nick Ingolia
 Maintainer:          nick@ingolia.org
 Build-Type:          Simple
@@ -30,7 +31,7 @@ Executable gtf-to-bed
                        attoparsec >= 0.8.5, hashable, unordered-containers,
                        iteratee >= 0.8.1, seqloc >= 0.0, transformers, monads-tf
   Hs-Source-Dirs:      src
-  Ghc-options:         -Wall
+  Ghc-options:         -Wall -rtsopts
   C-Sources:           src/rtsopts.c
 
 Executable test-gtf
