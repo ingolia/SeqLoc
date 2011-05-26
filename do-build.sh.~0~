@@ -1,3 +1,4 @@
+#!/bin/bash
 
 ( cd seqloc && \
   runhaskell Setup.hs clean && \
@@ -10,6 +11,4 @@
   runhaskell Setup.hs configure --user -p && \
   runhaskell Setup.hs build && \
   runhaskell Setup.hs haddock && \
-  runhaskell Setup.hs install ) && \
-( cd ../SamTools && \
-  ./do-build.sh )
+  runhaskell Setup.hs install )
