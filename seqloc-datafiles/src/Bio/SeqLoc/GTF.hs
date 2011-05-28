@@ -3,7 +3,7 @@
 {-| Utilities for reading and writing GTF format gene annotations -}
 
 module Bio.SeqLoc.GTF
-       ( readGtfTranscripts
+       ( readGtfTranscripts, readGtfTranscriptsErr
        , transcriptToGtf
        )
        where 
@@ -73,6 +73,12 @@ readGtfTranscripts = Iter.fileDriver gtfTrxsIter >=>
   where gtfTrxsIter = Iter.joinI . IterChar.enumLinesBS . Iter.joinI . gtflineIter $ Iter.foldl' insertGtfLine trxs0
         trxs0 = GtfTrxs HM.empty HM.empty HM.empty
 
+readGtfTranscriptsErr :: FilePath -> IO ([Transcript], [String])
+readGtfTranscriptsErr = Iter.fileDriver gtfTrxsIter >=>
+                        return . mkTranscriptsErr
+  where gtfTrxsIter = Iter.joinI . IterChar.enumLinesBS . Iter.joinI . gtflineIter $ Iter.foldl' insertGtfLine trxs0
+        trxs0 = GtfTrxs HM.empty HM.empty HM.empty                        
+
 mkTranscripts :: GtfTrxs -> Either String [Transcript]
 mkTranscripts trxs = go [] allTrxs
   where allTrxs = HM.toList . gtfTogene $ trxs
@@ -83,6 +89,19 @@ mkTranscripts trxs = go [] allTrxs
         mkOne (trxname, genename) = mkTranscript trxname exons cdses genename
           where exons = fromMaybe [] . HM.lookup trxname . gtfExonLocs $ trxs
                 cdses = fromMaybe [] . HM.lookup trxname . gtfCdsLocs $ trxs
+
+mkTranscriptsErr :: GtfTrxs -> ([Transcript], [String])
+mkTranscriptsErr trxs = go ([], []) allTrxs
+  where allTrxs = HM.toList . gtfTogene $ trxs
+        go curr [] = curr
+        go (currtrx, currerr) (trxAndGene:rest) = case mkOne trxAndGene of
+          Left err -> let nexterr = err : currerr
+                      in nexterr `seq` go (currtrx, nexterr) rest
+          Right t -> let next = t : currtrx
+                     in next `seq` go (next, currerr) rest
+        mkOne (trxname, genename) = mkTranscript trxname exons cdses genename
+          where exons = fromMaybe [] . HM.lookup trxname . gtfExonLocs $ trxs
+                cdses = fromMaybe [] . HM.lookup trxname . gtfCdsLocs $ trxs        
 
 mkTranscript :: BS.ByteString -> [ContigSeqLoc] -> [ContigSeqLoc] -> BS.ByteString -> Either String Transcript
 mkTranscript trx exons cdses gene = moderr $ do loc <- exonLoc exons
