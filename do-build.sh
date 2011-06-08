@@ -1,4 +1,4 @@
-
+#!/bin/bash
 ( cd seqloc && \
   runhaskell Setup.hs clean && \
   runhaskell Setup.hs configure --user -p && \
