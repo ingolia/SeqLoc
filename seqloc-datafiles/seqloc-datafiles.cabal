@@ -20,7 +20,7 @@ Library
   Other-modules:       Bio.SeqLoc.ZeptoUtils
   Build-depends:       base >= 4.2 && < 5, bytestring, haskell98,
                        attoparsec >= 0.8.5, hashable, unordered-containers,
-                       iteratee >= 0.8.1, seqloc >= 0.3, biocore
+                       iteratee >= 0.8.1, seqloc >= 0.3.1, biocore
   Hs-Source-Dirs:      src
   Ghc-options:         -Wall
 
@@ -29,7 +29,7 @@ Executable gtf-to-bed
   Other-modules:       Bio.SeqLoc.GTF, Bio.SeqLoc.Bed, Bio.SeqLoc.ZeptoUtils
   Build-depends:       base >= 4.2 && < 5, bytestring, haskell98,
                        attoparsec >= 0.8.5, hashable, unordered-containers,
-                       iteratee >= 0.8.1, seqloc >= 0.3, biocore, transformers, monads-tf
+                       iteratee >= 0.8.1, seqloc >= 0.3.1, biocore, transformers, monads-tf
   Hs-Source-Dirs:      src
   Ghc-options:         -Wall -rtsopts
   C-Sources:           src/rtsopts.c
@@ -41,7 +41,7 @@ Executable test-gtf
   Other-modules:       Bio.SeqLoc.GTF, Bio.SeqLoc.TranscriptTable, Bio.SeqLoc.ZeptoUtils
   Build-depends:       base >= 4.2 && < 5, bytestring, haskell98,
                        attoparsec >= 0.8.5, hashable, unordered-containers,
-                       iteratee >= 0.8.1, seqloc >= 0.3, biocore,
+                       iteratee >= 0.8.1, seqloc >= 0.3.1, biocore,
                        QuickCheck, random
   Hs-Source-Dirs:      src, test
   Ghc-options:         -Wall -rtsopts
@@ -54,7 +54,7 @@ Executable test-bed
   Other-modules:       Bio.SeqLoc.Bed, Bio.SeqLoc.TranscriptTable, Bio.SeqLoc.ZeptoUtils
   Build-depends:       base >= 4.2 && < 5, bytestring, haskell98,
                        attoparsec >= 0.8.5, hashable, unordered-containers,
-                       iteratee >= 0.8.1, seqloc >= 0.3, biocore,
+                       iteratee >= 0.8.1, seqloc >= 0.3.1, biocore,
                        QuickCheck, random
   Hs-Source-Dirs:      src, test
   Ghc-options:         -Wall
@@ -66,7 +66,7 @@ Executable gtf-introns
   Other-modules:       Bio.SeqLoc.GTF, Bio.SeqLoc.TranscriptTable, Bio.SeqLoc.ZeptoUtils
   Build-depends:       base >= 4.2 && < 5, bytestring, haskell98,
                        attoparsec >= 0.8.5, hashable, unordered-containers,
-                       iteratee >= 0.8.1, seqloc >= 0.3, biocore,
+                       iteratee >= 0.8.1, seqloc >= 0.3.1, biocore,
                        QuickCheck, random
   Hs-Source-Dirs:      src, test
   Ghc-options:         -Wall -rtsopts
