@@ -8,7 +8,7 @@ with specific, named sequences.
 -}
 
 module Bio.SeqLoc.OnSeq ( 
-  SeqLabel(..), unSeqLabel
+  SeqLabel(..), toSeqLabel, unSeqLabel
   
   , OnSeq(..)
   
@@ -41,6 +41,9 @@ import qualified Bio.SeqLoc.Position as Pos
 import qualified Bio.SeqLoc.SpliceLocation as SpLoc
 import Bio.SeqLoc.Strand
 
+toSeqLabel :: BS.ByteString -> SeqLabel
+toSeqLabel = SeqLabel . LBS.fromChunks . (: [])
+
 unSeqLabel :: SeqLabel -> BS.ByteString
 unSeqLabel = BS.concat . LBS.toChunks . unSL
 
@@ -54,7 +57,7 @@ instance Stranded s => Stranded (OnSeq s) where
 
 instance LocRepr s => LocRepr (OnSeq s) where
   repr (OnSeq name obj) = BS.concat [ unSeqLabel name, at, repr obj ]
-  unrepr = OnSeq <$> (SeqLabel . LBS.fromChunks . (: []) <$> ZP.takeWhile (/= c2w '@')) <* ZP.string at <*> unrepr
+  unrepr = OnSeq <$> (toSeqLabel <$> ZP.takeWhile (/= c2w '@')) <* ZP.string at <*> unrepr
 
 type SeqOffset = OnSeq Pos.Offset
 
