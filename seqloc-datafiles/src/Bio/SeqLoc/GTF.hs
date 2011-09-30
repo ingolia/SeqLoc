@@ -43,20 +43,20 @@ splocLines :: BS.ByteString -> Transcript -> BS.ByteString -> SpliceSeqLoc -> [B
 splocLines src trx ftype (OnSeq refname sploc) = map contigLines . Loc.toContigs $ sploc
   where contigLines contig = let (start0, end0) = Loc.bounds contig
                                  strchr = case Loc.strand contig of 
-                                   Fwd -> "+"
-                                   RevCompl -> "-"
-                             in unfields [ unSeqName refname
+                                   Plus -> "+"
+                                   Minus -> "-"
+                             in unfields [ unSeqLabel refname
                                          , src
                                          , ftype
-                                         , BS.pack . show . Pos.unOffset . (+ 1) $ start0
-                                         , BS.pack . show . Pos.unOffset . (+ 1) $ end0
+                                         , BS.pack . show . Pos.unOff . (+ 1) $ start0
+                                         , BS.pack . show . Pos.unOff . (+ 1) $ end0
                                          , "0.0"
                                          , strchr
                                          , "."
                                          , attrs
                                          ]
-        attrs = BS.concat [ "gene_id \"", unSeqName . geneId $ trx
-                          , "\"; transcript_id \"", unSeqName . trxId $ trx
+        attrs = BS.concat [ "gene_id \"", unSeqLabel . geneId $ trx
+                          , "\"; transcript_id \"", unSeqLabel . trxId $ trx
                           , "\"; " ]
         unfields = BS.intercalate (BS.singleton '\t')
                 
@@ -106,7 +106,7 @@ mkTranscriptsErr trxs = go ([], []) allTrxs
 mkTranscript :: BS.ByteString -> [ContigSeqLoc] -> [ContigSeqLoc] -> BS.ByteString -> Either String Transcript
 mkTranscript trx exons cdses gene = moderr $ do loc <- exonLoc exons
                                                 cdsloc <- cdsLoc loc cdses
-                                                return $ Transcript (SeqName gene) (SeqName trx) loc cdsloc
+                                                return $ Transcript (toSeqLabel gene) (toSeqLabel trx) loc cdsloc
   where moderr = either (Left . (("Transcript " ++ show trx ++ ": ") ++)) Right
                                                 
 exonLoc :: [ContigSeqLoc] -> Either String SpliceSeqLoc
@@ -122,7 +122,9 @@ cdsLoc :: SpliceSeqLoc -> [ContigSeqLoc] -> Either String (Maybe Loc.ContigLoc)
 cdsLoc _ [] = return Nothing
 cdsLoc (OnSeq trxname trxloc) cdses@(_:_) = do
   (seqname, rawcontigs) <- allSameName cdses
-  when (trxname /= seqname) $ Left . unwords $ [ "CDS sequence name mismatch", show trxname, show seqname ]
+  when (trxname /= seqname) $ Left . unwords $ [ "CDS sequence name mismatch", 
+                                                 show $ unSeqLabel trxname
+                                               , show $ unSeqLabel seqname ]
   contigs <- sortclocs rawcontigs
   (contigIn0:contigInRest) <- mapM (cdsIntoTranscript trxloc) contigs
   cloc <- foldM mergeCLocs contigIn0 contigInRest
@@ -139,7 +141,7 @@ cdsIntoTranscript trxloc cdscontig = maybe badIn Right . Loc.clocInto cdscontig 
 
 mergeCLocs :: Loc.ContigLoc -> Loc.ContigLoc -> Either String Loc.ContigLoc
 mergeCLocs cloc0 clocnext
-  | (Loc.strand cloc0 == Fwd) && (Loc.startPos clocnext == Loc.endPos cloc0 `Pos.slide` 1)
+  | (Loc.strand cloc0 == Plus) && (Loc.startPos clocnext == Loc.endPos cloc0 `Pos.slide` 1)
     = return $! Loc.extend (0, Loc.length clocnext) cloc0
   | otherwise = Left . unwords $ [ "Merging non-adjacent contigs: "
                                  , BS.unpack . repr $ cloc0
@@ -147,16 +149,16 @@ mergeCLocs cloc0 clocnext
                                  ]
                                    
 
-allSameName :: [OnSeq a] -> Either String (SeqName, [a])
-allSameName s = case group . map onSeqName $ s of
+allSameName :: [OnSeq a] -> Either String (SeqLabel, [a])
+allSameName s = case group . map onSeqLabel $ s of
   [(name0:_)] -> return (name0, map unOnSeq s)
-  names -> Left $ "allSameName: names " ++ show (map (unSeqName . head) names)
+  names -> Left $ "allSameName: names " ++ show (map (unSeqLabel . head) names)
   
-data GtfLine = GtfLine { gtfGene, gtfTrx, gtfFtype :: !BS.ByteString, gtfLoc :: !ContigSeqLoc } deriving (Show)
+data GtfLine = GtfLine { gtfGene, gtfTrx, gtfFtype :: !BS.ByteString, gtfLoc :: !ContigSeqLoc }
 
 data GtfTrxs = GtfTrxs { gtfExonLocs, gtfCdsLocs :: !(HM.HashMap BS.ByteString [ContigSeqLoc])
                        , gtfTogene :: !(HM.HashMap BS.ByteString BS.ByteString)
-                       } deriving (Show)
+                       }
                
 ftypeCds :: BS.ByteString
 ftypeCds = BS.pack "CDS"
@@ -190,7 +192,7 @@ gtfline = do seqname <- field
              _frame <- dropField
              gene <- attr "gene_id"
              trx <- attr "transcript_id"
-             let name = SeqName . BS.copy $ seqname
+             let name = toSeqLabel . BS.copy $ seqname
                  loc = Loc.fromBoundsStrand (start - 1) (end - 1) str
              return $! GtfLine gene trx ftype (OnSeq name loc)
 

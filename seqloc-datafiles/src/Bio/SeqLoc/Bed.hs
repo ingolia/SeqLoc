@@ -40,10 +40,10 @@ transcriptToBed :: BS.ByteString -- ^ score
                    -> BS.ByteString
 transcriptToBed score rgb trx = unfields fields
   where unfields = BS.intercalate (BS.singleton '\t')
-        fields = [ unSeqName chrom
+        fields = [ unSeqLabel chrom
                  , repr $ chromStart
                  , repr $ chromEnd + 1
-                 , unSeqName . trxId $ trx
+                 , unSeqLabel . trxId $ trx
                  , score
                  , strandchr
                  , repr $ thickStart
@@ -55,7 +55,7 @@ transcriptToBed score rgb trx = unfields fields
                  ]
         (OnSeq chrom loc) = location trx
         (chromStart, chromEnd) = Loc.bounds loc
-        strandchr = case Loc.strand loc of Fwd -> "+"; RevCompl -> "-"
+        strandchr = case Loc.strand loc of Plus -> "+"; Minus -> "-"
         (thickStart, thickEnd) = maybe noCds (Loc.bounds . unOnSeq) . cdsLocation $ trx
         noCds = (chromStart, chromStart - 1)
         contigs = sortBy (comparing Loc.offset5) . Loc.toContigs $ loc
@@ -119,21 +119,21 @@ bedZP = do chrom <- field -- The name of the chromosome
            cdsloc <- if thickStart >= thickEnd
                         then return Nothing
                         else liftM Just $! bedCdsLoc loc thickStart thickEnd
-           let n = SeqName $ BS.copy name
-               c = SeqName $ BS.copy chrom
+           let n = toSeqLabel $ BS.copy name
+               c = toSeqLabel $ BS.copy chrom
            return $! Transcript n n (OnSeq c loc) cdsloc
            
 bedTrxLoc :: (Monad m) => Pos.Offset -> Pos.Offset -> Strand -> [(Pos.Offset, Pos.Offset)] -> m SpLoc.SpliceLoc
 bedTrxLoc chromStart chromEnd str = maybe badContigs (return . stranded str) . 
                                     SpLoc.fromContigs . map blockContig
-  where blockContig (bsize, bstart) = Loc.fromPosLen (Pos.Pos (chromStart + bstart) Fwd) bsize
+  where blockContig (bsize, bstart) = Loc.fromPosLen (Pos.Pos (chromStart + bstart) Plus) bsize
         badContigs = fail $ "Bio.SeqLoc.Bed: bad blocks in " ++ show (chromStart, chromEnd)
         
 bedCdsLoc :: (Monad m) => SpLoc.SpliceLoc -> Pos.Offset -> Pos.Offset -> m Loc.ContigLoc
 bedCdsLoc loc thickStart thickEnd 
   = maybe badCdsLoc return $ do
-    relstart <- Loc.posInto (Pos.Pos thickStart Fwd) loc
-    relend <- Loc.posInto (Pos.Pos (thickEnd - 1) Fwd) loc
+    relstart <- Loc.posInto (Pos.Pos thickStart Plus) loc
+    relend <- Loc.posInto (Pos.Pos (thickEnd - 1) Plus) loc
     return $! stranded (Loc.strand loc) $ Loc.fromStartEnd (Pos.offset relstart) (Pos.offset relend)
       where badCdsLoc = fail $ "Bio.SeqLoc.Bed: bad cds in " ++ 
                         (BS.unpack . BS.unwords $ [ repr loc, repr thickStart, repr thickEnd ])

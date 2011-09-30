@@ -32,7 +32,7 @@ doGtfToBed gtf conf = readGtfTranscriptsErr gtf >>= handleErrors >>= writeTransc
           mapM_ (BS.hPutStrLn h . transcriptToBedStd) trxs
         adjustStop = if confStopIncluded conf then removeDoubleStop else id
         removeDoubleStop trx = trx { cds = cds trx >>= shortenLoc }
-        shortenLoc l = Loc.clocOutof (Loc.fromBoundsStrand 0 end Fwd) l
+        shortenLoc l = Loc.clocOutof (Loc.fromBoundsStrand 0 end Plus) l
           where end = max 0 $ Loc.length l - 4
         handleErrors (trxs, errs) = do maybe putErrs filePutErrs $ confBadTranscripts conf
                                        return trxs

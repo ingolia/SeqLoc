@@ -34,8 +34,8 @@ transcriptIntrons :: Transcript -> [Transcript]
 transcriptIntrons trx = zipWith intronTranscript [1..] . junctions $ sploc
   where (OnSeq refname sploc) = location trx
         intronTranscript idx jct = Transcript geneid trxid loc Nothing
-          where geneid = SeqName . flip BS.append "_introns" . unSeqName . geneId $ trx
-                trxid = SeqName . flip BS.append trxsuffix . unSeqName . trxId $ trx
+          where geneid = toSeqLabel . flip BS.append "_introns" . unSeqLabel . geneId $ trx
+                trxid = toSeqLabel . flip BS.append trxsuffix . unSeqLabel . trxId $ trx
                 trxsuffix = "_intron" `BS.append` (BS.pack . show $ idx)
                 loc = OnSeq refname (fromMaybe noLoc $ SpLoc.fromContigs [ intron jct ])
                 noLoc = error $ "Unable to create singleton SpLoc from " ++ (BS.unpack . repr) jct

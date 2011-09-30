@@ -29,7 +29,7 @@ parseLine l = case BS.split '\t' l of
     cdsloc <- if cdslocstr == na
                  then return Nothing
                  else liftM Just $! unreprMaybe cdslocstr
-    return $! Transcript (SeqName . BS.copy $ geneid) (SeqName . BS.copy $ trxid) trxloc cdsloc
+    return $! Transcript (toSeqLabel . BS.copy $ geneid) (toSeqLabel . BS.copy $ trxid) trxloc cdsloc
   _ -> Nothing
 
 -- | Write a transcript table file
@@ -38,8 +38,8 @@ writeTable outname = BS.writeFile outname . BS.unlines . map unparseLine
 
 -- | Produce a single transcript table line for a 'Transcript', newline not included.
 unparseLine :: Transcript -> BS.ByteString
-unparseLine trx = BS.intercalate (BS.singleton '\t') $ [ unSeqName . geneId $ trx
-                                                       , unSeqName . trxId $ trx
+unparseLine trx = BS.intercalate (BS.singleton '\t') $ [ unSeqLabel . geneId $ trx
+                                                       , unSeqLabel . trxId $ trx
                                                        , repr . location $ trx
                                                        , maybe na repr . cds $ trx
                                                        ]

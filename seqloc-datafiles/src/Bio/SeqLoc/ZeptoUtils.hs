@@ -14,8 +14,8 @@ import qualified Data.Attoparsec.Zepto as ZP
 import Bio.SeqLoc.Strand
 
 strand :: ZP.Parser Strand
-strand = ((ZP.string "+\t" *> return Fwd) <|>
-          (ZP.string "-\t" *> return RevCompl))
+strand = ((ZP.string "+\t" *> return Plus) <|>
+          (ZP.string "-\t" *> return Minus))
 
 decfield :: (Integral a) => ZP.Parser a
 decfield = decimal <* ZP.string "\t"
