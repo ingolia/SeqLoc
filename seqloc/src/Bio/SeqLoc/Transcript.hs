@@ -44,8 +44,8 @@ instance LocRepr Junction where
 fromDonorAcceptor :: Pos.Pos -> Pos.Pos -> Junction
 fromDonorAcceptor d a = let len = 1 + abs (Pos.offset a - Pos.offset d)
                         in case Pos.strand d of
-                          Fwd -> Junction $! Loc.fromPosLen (Pos.slide d 1) len
-                          RevCompl -> Junction $! Loc.fromPosLen (Pos.slide d (-1)) len
+                          Plus -> Junction $! Loc.fromPosLen (Pos.slide d 1) len
+                          Minus -> Junction $! Loc.fromPosLen (Pos.slide d (-1)) len
 
 -- | Donor position, i.e., the last position in the 5' exon around a
 -- junction.
@@ -72,11 +72,11 @@ junctions sploc = zipWith junction contigs (drop 1 contigs)
 -- transcript identifier, along with the genomic location of the
 -- processed transcript and an optional coding sequence on that
 -- transcript.
-data Transcript = Transcript { geneId :: !SeqName -- ^ Gene or locus name for a collection of transcripts
-                             , trxId :: !SeqName -- ^ Specific transcript identifier
+data Transcript = Transcript { geneId :: !SeqLabel -- ^ Gene or locus name for a collection of transcripts
+                             , trxId :: !SeqLabel -- ^ Specific transcript identifier
                              , location :: !SpliceSeqLoc -- ^ Sequence location of processed transcript
                              , cds :: !(Maybe Loc.ContigLoc) -- ^ Location of CDS on the transcript
-                             } deriving (Show)
+                             }
                                         
 -- | 'Just' the location of the 5' UTR on the transcript, or 'Nothing'
 -- if there is no 'cds' on the transcript or if the 'cds' location
@@ -85,7 +85,7 @@ data Transcript = Transcript { geneId :: !SeqName -- ^ Gene or locus name for a 
 utr5 :: Transcript -> Maybe Loc.ContigLoc
 utr5 trx = cds trx >>= utr5loc
   where utr5loc cdsloc = case Loc.startPos cdsloc of
-          (Pos.Pos startoff Fwd) | startoff > 0 -> Just $! Loc.fromBoundsStrand 0 (startoff - 1) Fwd
+          (Pos.Pos startoff Plus) | startoff > 0 -> Just $! Loc.fromBoundsStrand 0 (startoff - 1) Plus
           _ -> Nothing
           
 -- | 'Just' the location of the 3' UTR on the transcript, or 'Nothing'
@@ -95,7 +95,7 @@ utr5 trx = cds trx >>= utr5loc
 utr3 :: Transcript -> Maybe Loc.ContigLoc
 utr3 trx = cds trx >>= utr3loc
   where utr3loc cdsloc = case Loc.endPos cdsloc of
-          (Pos.Pos endoff Fwd) | endoff < trxlast -> Just $! Loc.fromBoundsStrand (endoff + 1) trxlast Fwd
+          (Pos.Pos endoff Plus) | endoff < trxlast -> Just $! Loc.fromBoundsStrand (endoff + 1) trxlast Plus
           _ -> Nothing
         trxlast = snd . Loc.bounds . unOnSeq . location $ trx
 
@@ -112,5 +112,5 @@ sortContigs [] = Nothing
 sortContigs cs@(c0:_)= liftM sortStrand contigStrand
   where contigStrand | all ((== Loc.strand c0) . Loc.strand) cs = Just . Loc.strand $ c0
                      | otherwise = Nothing
-        sortStrand Fwd = sortBy (comparing Loc.offset5) cs
-        sortStrand RevCompl = sortBy (comparing (negate . Loc.offset5)) cs
+        sortStrand Plus = sortBy (comparing Loc.offset5) cs
+        sortStrand Minus = sortBy (comparing (negate . Loc.offset5)) cs

@@ -54,8 +54,8 @@ goodJunction c5 c3 = sameStrand && inOrder
         c5end = snd . bounds $ c5
         c3start = fst . bounds $ c3
         inOrder = case strand c5 of
-          Fwd -> c5end < c3start
-          RevCompl -> c5end > c3start
+          Plus -> c5end < c3start
+          Minus -> c5end > c3start
 
 fromContigs :: [ContigLoc] -> Maybe SpliceLoc
 fromContigs [] = Nothing
@@ -67,11 +67,11 @@ tails sll@(SpliceLocLast _) = [sll]
 tails slp@(SpliceLocPrev _ n) = slp : (tails n)
 
 instance Stranded SpliceLoc where
-  revCompl sll = fromMaybe badRevCompl . foldl' addprev newlast $ slrest
+  revCompl sll = fromMaybe badMinus . foldl' addprev newlast $ slrest
     where (sl0:slrest) = tails sll
           newlast = Just $! singleton . revCompl . contig $ sl0
           addprev slnew slold = slnew >>= consContig (revCompl . contig $ slold)
-          badRevCompl = error $ "Bad junction doing reverse complement on " ++ (BS.unpack . repr) sll
+          badMinus = error $ "Bad junction doing reverse complement on " ++ (BS.unpack . repr) sll
 
 instance LocRepr SpliceLoc where
   repr = BS.intercalate (BS.singleton ';') . map repr . contigs
@@ -170,12 +170,12 @@ regionOutof pos5 len (cloc0:rest)
     | pos5 < 0 = Nothing
     | len < 0 = error $ "Bio.SeqLoc.SpliceLocation.regionOutof: input, " ++ show (pos5, len, cloc0)
     | pos5 >= len0 = regionOutof (pos5 - len0) len rest
-    | (pos5 + len <= len0) = let subcloc = fromPosLen (Pos.Pos pos5 Fwd) len
+    | (pos5 + len <= len0) = let subcloc = fromPosLen (Pos.Pos pos5 Plus) len
                              in case clocOutof subcloc cloc0 of
                                Just out0 -> Just [out0]
                                Nothing -> error $ "regionOutof: final bounds failure, " ++ (BS.unpack . repr) subcloc
     | otherwise = let outlen0 = len0 - pos5
-                      subcloc = fromPosLen (Pos.Pos pos5 Fwd) outlen0
+                      subcloc = fromPosLen (Pos.Pos pos5 Plus) outlen0
                   in case clocOutof subcloc cloc0 of
                        Just out0 -> liftM (out0 :) . regionOutof 0 (len - outlen0) $ rest
                        Nothing -> error $ "regionOutof: internal bounds failure, " ++ (BS.unpack . repr) subcloc

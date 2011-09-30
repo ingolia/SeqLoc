@@ -26,6 +26,8 @@ import qualified Data.ByteString.Char8 as BS
 
 import qualified Data.Attoparsec.Zepto as ZP
 
+import Bio.Core.Strand
+
 import Bio.SeqLoc.LocRepr
 import qualified Bio.SeqLoc.Position as Pos
 import Bio.SeqLoc.Strand
@@ -43,7 +45,7 @@ class Location l where
 
   -- | Sequence position of the start of the location.  This is the 5'
   -- end on the location strand, which will have a higher offset than
-  -- 'endPos' if the location is on the 'RevCompl' strand.
+  -- 'endPos' if the location is on the 'Minus' strand.
   startPos :: l -> Pos.Pos
 
   -- | Sequence position of the end of the location, as described in
@@ -96,7 +98,7 @@ class Location l where
   -- location on each end, based on a pair of (/5\' extension/, /3\'
   -- extension/).  The 5\' extension is applied to the 5\' end of the
   -- location on the location strand; if the location is on the
-  -- 'RevCompl' strand, the 5\' end will have a higher offset than the
+  -- 'Minus' strand, the 5\' end will have a higher offset than the
   -- 3\' end and this offset will increase by the amount of the 5\'
   -- extension.  Similarly, the 3\' extension is applied to the 3\'
   -- end of the location.
@@ -149,12 +151,12 @@ instance Location ContigLoc where
   bounds (ContigLoc seq5 len _) = (seq5, seq5 + len - 1)
   startPos (ContigLoc seq5 len str) 
     = case str of
-        Fwd      -> Pos.Pos seq5             str
-        RevCompl -> Pos.Pos (seq5 + len - 1) str
+        Plus      -> Pos.Pos seq5             str
+        Minus -> Pos.Pos (seq5 + len - 1) str
   endPos (ContigLoc seq5 len str) 
     = case str of
-        Fwd      -> Pos.Pos (seq5 + len - 1) str
-        RevCompl -> Pos.Pos seq5             str
+        Plus      -> Pos.Pos (seq5 + len - 1) str
+        Minus -> Pos.Pos seq5             str
   clocInto = clocClocInto
   clocOutof = clocClocOutof
   extend = clocExtend
@@ -177,8 +179,8 @@ fromBoundsStrand seq5 seq3 str = ContigLoc seq5 (1 + seq3 - seq5) str
 -- reverse complement strand.
 fromStartEnd :: Pos.Offset -> Pos.Offset -> ContigLoc
 fromStartEnd start end
-    | start < end = ContigLoc start (1 + end - start) Fwd
-    | otherwise   = ContigLoc end   (1 + start - end) RevCompl
+    | start < end = ContigLoc start (1 + end - start) Plus
+    | otherwise   = ContigLoc end   (1 + start - end) Minus
 
 -- | Create a sequence location from the sequence position of the
 -- start of the location and the length of the position.  The strand
@@ -186,8 +188,8 @@ fromStartEnd start end
 -- position, are determined by the strand of the starting position.
 fromPosLen :: Pos.Pos -> Pos.Offset -> ContigLoc
 fromPosLen _                       len | len < 0 = error "Bio.SeqLoc.Location.fromPosLen: len < 0"
-fromPosLen (Pos.Pos off5 Fwd)      len = ContigLoc off5               len Fwd
-fromPosLen (Pos.Pos off3 RevCompl) len = ContigLoc (off3 - (len - 1)) len RevCompl
+fromPosLen (Pos.Pos off5 Plus)      len = ContigLoc off5               len Plus
+fromPosLen (Pos.Pos off3 Minus) len = ContigLoc (off3 - (len - 1)) len Minus
 
 -- | Returns a location resulting from sliding the original location
 -- along the sequence by a specified offset.  A positive offset will
@@ -202,21 +204,21 @@ clocPosInto :: Pos.Pos -> ContigLoc -> Maybe Pos.Pos
 clocPosInto (Pos.Pos pos pStrand) (ContigLoc seq5 len cStrand)
     | pos < seq5 || pos >= seq5 + len = Nothing
     | otherwise = Just $ case cStrand of
-                           Fwd      -> Pos.Pos (pos - seq5)              pStrand
-                           RevCompl -> Pos.Pos (seq5 + len  - (pos + 1)) (revCompl pStrand)
+                           Plus      -> Pos.Pos (pos - seq5)              pStrand
+                           Minus -> Pos.Pos (seq5 + len  - (pos + 1)) (revCompl pStrand)
 
 clocPosOutof :: Pos.Pos -> ContigLoc -> Maybe Pos.Pos
 clocPosOutof (Pos.Pos pos pStrand) (ContigLoc seq5 len cStrand)
     | pos < 0 || pos >= len = Nothing
     | otherwise = Just $ case cStrand of
-                           Fwd      -> Pos.Pos (pos + seq5)             pStrand
-                           RevCompl -> Pos.Pos (seq5 + len - (pos + 1)) (revCompl pStrand)
+                           Plus      -> Pos.Pos (pos + seq5)             pStrand
+                           Minus -> Pos.Pos (seq5 + len - (pos + 1)) (revCompl pStrand)
 
 clocExtend :: (Pos.Offset, Pos.Offset) -> ContigLoc -> ContigLoc
 clocExtend (ext5, ext3) (ContigLoc seq5 len str)
     = case str of
-        Fwd -> ContigLoc (seq5 - ext5) (len + ext5 + ext3) str
-        RevCompl -> ContigLoc (seq5 - ext3) (len + ext5 + ext3) str
+        Plus -> ContigLoc (seq5 - ext5) (len + ext5 + ext3) str
+        Minus -> ContigLoc (seq5 - ext3) (len + ext5 + ext3) str
 
 clocClocInto :: ContigLoc -> ContigLoc -> Maybe ContigLoc
 clocClocInto subcloc tocloc

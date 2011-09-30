@@ -38,7 +38,7 @@ tests = [ T "Strand revCompl"               test_Strand_revCompl
         , T "Pos atPos2"                    property_Pos_atPos2
         , T "Pos repr"                      test_Pos_repr
           
-        , T "Contig revCompl"               test_Contig_RevCompl
+        , T "Contig revCompl"               test_Contig_Minus
         , T "Contig pos into/outof inverse" property_ContigIntoOutof
         , T "Contig pos outof/into inverse" property_ContigOutofInto
         , T "Contig loc into/outof inverse" property_ContigLocIntoOutof
@@ -48,13 +48,13 @@ tests = [ T "Strand revCompl"               test_Strand_revCompl
         , T "Contig seqData"                property_Contig_seqData
         , T "Contig seqDataPadded"          property_Contig_seqDataPadded
         , T "Contig seqData2"               property_Contig_seqData2
-        , T "Contig extend/revCompl"        property_Contig_extendRevCompl
+        , T "Contig extend/revCompl"        property_Contig_extendMinus
         , T "Contig fromStartEnd"           property_Contig_fromStartEnd
         , T "Contig fromBoundsStrand"       property_Contig_fromBoundsStrand
         , T "Contig overlaps"               property_Contig_overlaps  
         , T "Contig repr"                   test_Contig_repr
         
-        , T "Loc revCompl"                  test_Loc_RevCompl
+        , T "Loc revCompl"                  test_Loc_Minus
         , T "Loc pos into/outof inverse"    property_LocIntoOutof
         , T "Loc pos outof/into inverse"    property_LocOutofInto
         , T "Loc outof based on bounds"     test_Loc_OutofBounds
@@ -67,7 +67,7 @@ tests = [ T "Strand revCompl"               test_Strand_revCompl
         , T "Loc seqDataPadded"             property_Loc_seqDataPadded
         , T "SpLoc seqData2"                property_SpLoc_seqData2
         , T "SpLoc repr"                    test_SpLoc_repr
-        , T "SpLoc termini/revCompl"        property_SpLoc_terminiRevCompl
+        , T "SpLoc termini/revCompl"        property_SpLoc_terminiMinus
         , T "SpLoc termini/extend"          property_SpLoc_terminiExtend
         ]
 
@@ -77,13 +77,16 @@ tests = [ T "Strand revCompl"               test_Strand_revCompl
 genNtByteString :: Int -> Gen BS.ByteString
 genNtByteString = liftM BS.pack . flip replicateM (elements "ACGT")
 
-genName :: Gen SeqName
-genName = liftM (SeqName . BS.pack) $ genNameLength >>= flip replicateM genNameChar
+genName :: Gen SeqLabel
+genName = liftM (SeqLabel . LBS.pack) $ genNameLength >>= flip replicateM genNameChar
     where genNameLength = choose (1, 20)
           genNameChar = elements $ ['a'..'z'] ++ ['A'..'Z'] ++ ['0'..'9'] ++ "-_"
 
-instance Arbitrary SeqName where
+instance Arbitrary SeqLabel where
     arbitrary = genName
+
+instance Show SeqLabel where
+  show = show . unSeqLabel
 
 test_revCompl :: (Eq s, Stranded s) => s -> Bool
 test_revCompl s = (revCompl . revCompl) s == s
@@ -120,8 +123,8 @@ property_Pos_atPos pos
     in if and [ Pos.offset pos >= 0, Pos.offset pos < seqlen ]
        then let fwdNt = BS.index sequ (fromIntegral . Pos.offset $ pos)
             in case Pos.strand pos of
-              Fwd ->      actual == Just fwdNt
-              RevCompl -> actual == Just (compl $ fwdNt)
+              Plus ->      actual == Just fwdNt
+              Minus -> actual == Just (compl $ fwdNt)
        else actual == Nothing
 
 property_Pos_atPos2 :: Pos.Pos -> Property
@@ -138,7 +141,7 @@ test_Pos_repr = test_repr
 -- Bio.BioSeq.Location
 
 instance Arbitrary Strand where
-    arbitrary = elements [Fwd, RevCompl]
+    arbitrary = elements [Plus, Minus]
 
 instance Arbitrary Pos.Pos where
     arbitrary = liftM2 Pos.Pos genOffset arbitrary
@@ -146,8 +149,8 @@ instance Arbitrary Pos.Pos where
 instance Arbitrary Loc.ContigLoc where
     arbitrary = liftM2 Loc.fromPosLen arbitrary genPositiveOffset
 
-test_Contig_RevCompl :: Loc.ContigLoc -> Bool
-test_Contig_RevCompl = test_revCompl
+test_Contig_Minus :: Loc.ContigLoc -> Bool
+test_Contig_Minus = test_revCompl
 
 property_ContigIntoOutof :: Loc.ContigLoc -> Pos.Pos -> Property
 property_ContigIntoOutof contig pos
@@ -198,7 +201,7 @@ property_Contig_seqDataPadded :: Loc.ContigLoc -> Property
 property_Contig_seqDataPadded contig
     = forAll (genNonNegOffset >>= genNtByteString . fromIntegral) $ \sequ ->
       (BS.pack $ map (fromMaybe 'N' . Pos.atPos sequ) contigPoses) == Loc.seqDataPad sequ contig
-    where contigPoses = mapMaybe (flip Loc.posOutof contig . flip Pos.Pos Fwd) [0..(Loc.length contig - 1)]
+    where contigPoses = mapMaybe (flip Loc.posOutof contig . flip Pos.Pos Plus) [0..(Loc.length contig - 1)]
 
 property_Contig_seqData2 :: Loc.ContigLoc -> Property
 property_Contig_seqData2 contig
@@ -211,8 +214,8 @@ property_Contig_seqData2 contig
            , Loc.seqDataPad sequ contig ==       BS.pack (Loc.seqDataPad (BS.unpack sequ) contig)
            ]
 
-property_Contig_extendRevCompl :: Loc.ContigLoc -> Property
-property_Contig_extendRevCompl contig
+property_Contig_extendMinus :: Loc.ContigLoc -> Property
+property_Contig_extendMinus contig
     = forAll (liftM2 (,) genNonNegOffset genNonNegOffset) $ \(ext5, ext3) ->
       (revCompl $ Loc.extend (ext5, ext3) contig) == (Loc.extend (ext3, ext5) $ revCompl contig)
 
@@ -250,16 +253,16 @@ genInvertibleLoc = sized $ \sz -> do ncontigs <- choose (1, sz + 1)
                                      if rc then return $ revCompl fwdloc else return fwdloc
     where genContigs = liftM (reverse . foldl' intervalsToContigs []) . genIntervals
           genIntervals nints = replicateM nints $ liftM2 (,) genPositiveOffset genPositiveOffset
-          intervalsToContigs [] (init5, len) = [Loc.fromPosLen (Pos.Pos init5 Fwd) len]
+          intervalsToContigs [] (init5, len) = [Loc.fromPosLen (Pos.Pos init5 Plus) len]
           intervalsToContigs prevs@(prev:_) (nextoffset, nextlen)
               = let !prevend = Loc.offset5 prev + Loc.length prev
-                in (Loc.fromPosLen (Pos.Pos (prevend + nextoffset) Fwd) nextlen):prevs
+                in (Loc.fromPosLen (Pos.Pos (prevend + nextoffset) Plus) nextlen):prevs
 
 instance Arbitrary SpLoc.SpliceLoc where
   arbitrary = genInvertibleLoc
 
-test_Loc_RevCompl :: SpLoc.SpliceLoc -> Bool
-test_Loc_RevCompl = test_revCompl
+test_Loc_Minus :: SpLoc.SpliceLoc -> Bool
+test_Loc_Minus = test_revCompl
 
 property_LocIntoOutof :: SpLoc.SpliceLoc -> Pos.Pos -> Property
 property_LocIntoOutof loc pos
@@ -323,7 +326,7 @@ property_Loc_seqDataPadded :: SpLoc.SpliceLoc -> Property
 property_Loc_seqDataPadded loc
     = forAll (genNonNegOffset >>= genNtByteString . fromIntegral) $ \sequ ->
       (BS.pack $ map (fromMaybe 'N' . Pos.atPos sequ) locPoses) == Loc.seqDataPad sequ loc
-    where locPoses = mapMaybe (flip Loc.posOutof loc . flip Pos.Pos Fwd) [0..(Loc.length loc - 1)]
+    where locPoses = mapMaybe (flip Loc.posOutof loc . flip Pos.Pos Plus) [0..(Loc.length loc - 1)]
 
 property_SpLoc_seqData2 :: SpLoc.SpliceLoc -> Property
 property_SpLoc_seqData2 sploc
@@ -339,15 +342,15 @@ property_SpLoc_seqData2 sploc
 property_Loc_Within :: Pos.Pos -> Property
 property_Loc_Within pos
     = forAll genInvertibleLoc $ \loc ->
-      and [ (pos `Loc.posWithin` loc) == (maybe False ((/= RevCompl) . Pos.strand) $ Loc.posInto pos loc)
+      and [ (pos `Loc.posWithin` loc) == (maybe False ((/= Minus) . Pos.strand) $ Loc.posInto pos loc)
           , ((Pos.offset pos) `Loc.offsetWithin` loc) == (isJust . Loc.posInto pos $ loc)
           ]
 
 test_SpLoc_repr :: SpLoc.SpliceLoc -> Bool
 test_SpLoc_repr = test_repr
 
-property_SpLoc_terminiRevCompl :: SpLoc.SpliceLoc -> Bool
-property_SpLoc_terminiRevCompl loc
+property_SpLoc_terminiMinus :: SpLoc.SpliceLoc -> Bool
+property_SpLoc_terminiMinus loc
   = and [ revCompl (Loc.startPos loc) == Loc.endPos (revCompl loc)
         , revCompl (Loc.endPos loc) == Loc.startPos (revCompl loc)
         ]
@@ -358,8 +361,8 @@ property_SpLoc_terminiExtend loc
   forAll genNonNegOffset $ \ext3 ->
   let extloc = Loc.extend (ext5, ext3) loc
       strandSlide pos doff = case Pos.strand pos of
-        Fwd -> Pos.slide pos doff
-        RevCompl -> Pos.slide pos (negate doff)
+        Plus -> Pos.slide pos doff
+        Minus -> Pos.slide pos (negate doff)
   in and [ Loc.startPos extloc == strandSlide (Loc.startPos loc) (negate ext5)
          , Loc.endPos extloc == strandSlide (Loc.endPos loc) ext3
          ]

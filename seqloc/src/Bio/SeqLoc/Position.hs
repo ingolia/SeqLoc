@@ -21,32 +21,33 @@ module Bio.SeqLoc.Position (
     where 
 
 import Control.Applicative
+import Control.Arrow
 import Control.Monad (liftM)
-import qualified Data.ByteString as BSW
 import qualified Data.ByteString.Char8 as BS
-import Data.Int (Int64)
 
-import qualified Data.Attoparsec.Char8 as AP (isDigit_w8)
-import qualified Data.Attoparsec.Zepto as ZP
+import Bio.Core.Sequence
+import Bio.Core.Strand
 
 import Bio.SeqLoc.LocRepr
 import Bio.SeqLoc.SeqLike
 import Bio.SeqLoc.Strand
 
--- | Unstranded offset in a sequence
-newtype Offset = Offset { unOffset :: Int64 } deriving (Eq, Ord, Show, Read, Num, Real, Enum, Integral)
+instance Enum Offset where
+  toEnum = Offset . toEnum
+  fromEnum = fromEnum . unOff
 
-instance LocRepr Offset where
-  repr = BS.pack . show . unOffset
-  unrepr = (negate <$> (ZP.string "-" *> decimal)) <|> (ZP.string "+" *> decimal) <|> decimal
-    where decimal = Offset . BSW.foldl' step 0 <$> ZP.takeWhile AP.isDigit_w8
-          step a w = a * 10 + fromIntegral (w - 48)
+instance Real Offset where
+  toRational = toRational . unOff
 
+instance Integral Offset where
+  (Offset n) `quotRem` (Offset d) = (Offset *** Offset) $ n `quotRem` d
+  toInteger = toInteger . unOff
+  
 -- | Stranded position in a sequence
 data Pos = Pos { offset :: !Offset -- ^ 0-based index of the position
                , strand :: !Strand -- ^ Strand of the position
                }
-              deriving (Eq, Ord, Show, Read)
+              deriving (Eq, Ord, Show)
   
 instance Stranded Pos where
   revCompl (Pos off str) = Pos off (revCompl str)

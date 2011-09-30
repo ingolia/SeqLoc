@@ -8,7 +8,7 @@ with specific, named sequences.
 -}
 
 module Bio.SeqLoc.OnSeq ( 
-  SeqName(..)
+  SeqLabel(..), unSeqLabel
   
   , OnSeq(..)
   
@@ -18,7 +18,7 @@ module Bio.SeqLoc.OnSeq (
   -- * Contiguous location spans on named sequences
   , ContigSeqLoc
 
-                  -- * Arbitrary location spans on named sequences
+    -- * Arbitrary location spans on named sequences
   , SpliceSeqLoc
     
   , andSameSeq
@@ -28,10 +28,12 @@ module Bio.SeqLoc.OnSeq (
 
 import Control.Applicative
 import qualified Data.ByteString.Char8 as BS
+import qualified Data.ByteString.Lazy.Char8 as LBS
 import Data.ByteString.Internal (c2w)
-import Data.String
 
 import qualified Data.Attoparsec.Zepto as ZP
+
+import Bio.Core.Sequence
 
 import Bio.SeqLoc.LocRepr
 import qualified Bio.SeqLoc.Location as Loc
@@ -39,9 +41,10 @@ import qualified Bio.SeqLoc.Position as Pos
 import qualified Bio.SeqLoc.SpliceLocation as SpLoc
 import Bio.SeqLoc.Strand
 
-newtype SeqName = SeqName { unSeqName :: BS.ByteString } deriving (Show, Read, Eq, Ord, IsString)
+unSeqLabel :: SeqLabel -> BS.ByteString
+unSeqLabel = BS.concat . LBS.toChunks . unSL
 
-data OnSeq s = OnSeq { onSeqName :: !SeqName, unOnSeq :: !s } deriving (Show, Read, Eq, Ord)
+data OnSeq s = OnSeq { onSeqLabel :: !SeqLabel, unOnSeq :: !s } deriving (Eq, Ord)
 
 at :: BS.ByteString
 at = BS.singleton '@'
@@ -50,8 +53,8 @@ instance Stranded s => Stranded (OnSeq s) where
   revCompl (OnSeq name obj) = OnSeq name (revCompl obj)
 
 instance LocRepr s => LocRepr (OnSeq s) where
-  repr (OnSeq name obj) = BS.concat [ unSeqName name, at, repr obj ]
-  unrepr = OnSeq <$> (SeqName <$> ZP.takeWhile (/= c2w '@')) <* ZP.string at <*> unrepr
+  repr (OnSeq name obj) = BS.concat [ unSeqLabel name, at, repr obj ]
+  unrepr = OnSeq <$> (SeqLabel . LBS.fromChunks . (: []) <$> ZP.takeWhile (/= c2w '@')) <* ZP.string at <*> unrepr
 
 type SeqOffset = OnSeq Pos.Offset
 
@@ -69,3 +72,8 @@ type SpliceSeqLoc = OnSeq SpLoc.SpliceLoc
 andSameSeq :: (a -> b -> Bool) -> OnSeq a -> OnSeq b -> Bool
 andSameSeq p (OnSeq n1 x) (OnSeq n2 y) | n1 == n2 = p x y
                                        | otherwise = False
+
+instance BioSeq (OnSeq BS.ByteString) where
+  seqlabel = onSeqLabel
+  seqdata = SeqData . LBS.fromChunks . (: []) . unOnSeq
+  seqlength = Offset . fromIntegral . BS.length . unOnSeq
