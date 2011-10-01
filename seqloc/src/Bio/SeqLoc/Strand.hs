@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings, TypeSynonymInstances #-}
+{-# LANGUAGE OverloadedStrings, TypeSynonymInstances, FlexibleInstances #-}
 
 {-| Utilities for manipulating nucleotide sequences and locations on
 nucleotide sequences that occur on a forward or a reverse-complement

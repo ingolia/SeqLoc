@@ -25,11 +25,11 @@ complementing nucleotide characters.
 	ghci> revCompl "GAttACA"
 	ghci> revCompl "GAttACA"
 	"TGTaaTC"
-	ghci> stranded Fwd "GATTaca"
+	ghci> stranded Plus "GATTaca"
 	"GATTaca"
-	ghci> stranded RevCompl "GATTaca"
+	ghci> stranded Minus "GATTaca"
 	"tgtAATC"
-	ghci> stranded (revCompl Fwd) "GATTaca"
+	ghci> stranded (revCompl Plus) "GATTaca"
 	"tgtAATC"
 
 Positions and Offsets
@@ -54,12 +54,12 @@ lightweight parser for that string representation from
 `Data.Attoparsec.Zepto`.  There are also helper functions that wrap
 the parser and handle errors in different ways.
 
-	ghci> repr (Pos 99 Fwd)
+	ghci> repr (Pos 99 Plus)
 	"99(+)"
 	ghci> (unreprEither  "99(-)") :: Either String Pos
-	Right (Pos {offset = Offset {unOffset = 99}, strand = RevCompl})
+	Right (Pos {offset = Offset {unOffset = 99}, strand = Minus})
 	ghci> (unreprErr  "99(+)") :: Pos
-	Pos {offset = Offset {unOffset = 99}, strand = Fwd}
+	Pos {offset = Offset {unOffset = 99}, strand = Plus}
 
 
 While locations and positions have `Show` instances, their `LocRepr`
@@ -76,9 +76,9 @@ as the forward strand from nucleotides 100 to 150, or the reverse
 complement strand from nucleotides 1000 to 800. These locations can be
 created by specifying their bounds and strand.
 
-	ghci> repr $ Loc.fromBoundsStrand 100 150 Fwd
+	ghci> repr $ Loc.fromBoundsStrand 100 150 Plus
 	"100to150(+)"
-	ghci> repr $ Loc.fromBoundsStrand 800 1000 RevCompl
+	ghci> repr $ Loc.fromBoundsStrand 800 1000 Minus
 	"800to1000(-)"
 
 They can also be specified with a starting position, which will be the
@@ -124,24 +124,24 @@ in absolute coordinates and a position relative to a location. The
 location-relative position. It may fail, with `Nothing`, if the
 position is outside the location.
 
-	ghci> let p = Pos 850 Fwd
+	ghci> let p = Pos 850 Plus
 	ghci> maybe "n/a" repr $ Loc.posInto p l
 	"150(-)"
 	ghci> maybe "n/a" repr $ Loc.posInto p l'
 	"50(+)"
-	ghci> let p2 = Pos 750 Fwd
+	ghci> let p2 = Pos 750 Plus
 	ghci> maybe "n/a" repr $ Loc.posInto p2 l
 	"n/a"
 
 The `posOutof` function pulls a location-relative position back out of
 the location.
 
-	ghci> let q = Pos 120 Fwd
+	ghci> let q = Pos 120 Plus
 	ghci> maybe "n/a" repr $ Loc.posOutof q l
 	"880(-)"
 	ghci> maybe "n/a" repr $ Loc.posOutof q l'
 	"920(+)"
-	ghci> let q2 = Pos 220 Fwd
+	ghci> let q2 = Pos 220 Plus
 	ghci> maybe "n/a" repr $ Loc.posOutof q2 l'
 	"n/a"
 
@@ -241,7 +241,7 @@ type in the `Bio.SeqLoc.OnSeq` allows position and location types to
 be tagged with names. The module provides useful type synonyms for the
 named location data types.
 
-	ghci> let z = OnSeq (SeqName "chr1") (Loc.fromStartEnd 10000 20000)
+	ghci> let z = OnSeq (toSeqLabel "chr1") (Loc.fromStartEnd 10000 20000)
 	ghci> repr z
 	"chr1@10000to20000(+)"
 	ghci> repr $ revCompl z
