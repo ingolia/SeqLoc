@@ -12,6 +12,7 @@ import Control.Applicative
 import Control.Monad
 import qualified Data.ByteString.Char8 as BS
 import Data.List
+import Data.Maybe
 import Data.Ord
 
 import qualified Data.Attoparsec.Zepto as ZP
@@ -80,7 +81,7 @@ bedLineEnum = Iter.convStream $ Iter.head >>= liftM (: []) . handleErr . ZP.pars
 -- | Minimalistic 'ZP.Parser'-style parser for a BED format line, not
 -- including the trailing newline.
 bedZP :: ZP.Parser Transcript
-bedZP = do chrom <- field -- The name of the chromosome
+bedZP = do chrom <- firstfield -- The name of the chromosome
            chromStart <- decfield -- The starting position of the
                                   -- feature in the chromosome or
                                   -- scaffold. The first base in a
@@ -94,31 +95,39 @@ bedZP = do chrom <- field -- The name of the chromosome
                                 -- chromStart=0, chromEnd=100, and
                                 -- span the bases numbered 0-99.
            name <- field -- Defines the name of the BED line.
-           _score <- dropField -- A score between 0 and 1000.
-           str <- strand -- Defines the strand
-           thickStart <- decfield -- The starting position at which
+           _score <- unlessAtEnd dropField -- A score between 0 and 1000.
+           str <- fromMaybe Plus <$> unlessAtEnd strand -- Defines the strand
+           thickStart <- unlessAtEnd decfield -- The starting position at which
                                   -- the feature is drawn thickly (for
                                   -- example, the start codon in gene
                                   -- displays).
-           thickEnd <- decfield -- The ending position at which the
+           thickEnd <- unlessAtEnd decfield -- The ending position at which the
                                 -- feature is drawn thickly (for
                                 -- example, the stop codon in gene
                                 -- displays).
-           _itemRGB <- dropField -- An RGB value of the form R,G,B
-                                 -- (e.g. 255,0,0).
-           blockCount <- decfield -- The number of blocks (exons) in
+           _itemRGB <- unlessAtEnd dropField -- An RGB value of the form R,G,B
+                                             -- (e.g. 255,0,0).
+           blockCount <- unlessAtEnd decfield -- The number of blocks (exons) in
                                   -- the BED line.
-           blockSizes <- commas blockCount decimal <* dropField
-                         -- A comma-separated list of the block sizes.                         
-           blockStarts <- commas blockCount decimal 
-                          -- A comma-separated list of block starts.
-           loc <- bedTrxLoc chromStart chromEnd str $ zip blockSizes blockStarts
+           blockSizes <- case blockCount of
+             Just ct -> unlessAtEnd $ commas ct decimal
+                        -- A comma-separated list of the block sizes.                         
+             Nothing -> return Nothing
+           blockStarts <- case blockCount of
+             Just ct -> unlessAtEnd $ commas ct decimal 
+                        -- A comma-separated list of block starts.
+             Nothing -> return Nothing
+           loc <- case liftM2 zip blockSizes blockStarts of
+             Just blocks -> bedTrxLoc chromStart chromEnd str blocks
+             Nothing -> maybe badContig return $ 
+                        SpLoc.fromContigs [ Loc.fromBoundsStrand chromStart (chromEnd - 1) str ]
+                          where badContig = error "bedZP: Bad singleton sploc!"
            unless (Loc.bounds loc == (chromStart, chromEnd - 1)) $
              fail $ "Bio.SeqLoc.Bed: bad sploc:" ++ 
              (BS.unpack . BS.unwords $ [ repr loc, repr chromStart, repr chromEnd ])
-           cdsloc <- if thickStart >= thickEnd
-                        then return Nothing
-                        else liftM Just $! bedCdsLoc loc thickStart thickEnd
+           cdsloc <- case liftM2 (,) thickStart thickEnd of
+             Just (start, end) -> liftM Just $! bedCdsLoc loc start end
+             Nothing -> return Nothing
            let n = toSeqLabel $ BS.copy name
                c = toSeqLabel $ BS.copy chrom
            return $! Transcript n n (OnSeq c loc) cdsloc
@@ -140,5 +149,7 @@ bedCdsLoc loc thickStart thickEnd
 
 commas :: Int -> ZP.Parser a -> ZP.Parser [a]
 commas n p | n < 1     = return [] 
-           | otherwise = (:) <$> p <*>
-                         replicateM (n - 1) (ZP.string "," *> p)
+           | otherwise = ZP.string "\t" *> 
+                         ( (:) <$> p <*>
+                           replicateM (n - 1) (ZP.string "," *> p) )
+                         <* (ZP.string "," <|> return ())

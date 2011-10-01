@@ -182,7 +182,7 @@ gtflineIter = Iter.convStream $ Iter.head >>= liftM (: []) . handleErr . ZP.pars
 
 -- Does NOT consume the remainder of the line
 gtfline :: ZP.Parser GtfLine
-gtfline = do seqname <- field
+gtfline = do seqname <- firstfield
              _source <- dropField
              ftype <- field
              start <- decfield
