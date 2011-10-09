@@ -126,8 +126,8 @@ bedZP = do chrom <- firstfield -- The name of the chromosome
              fail $ "Bio.SeqLoc.Bed: bad sploc:" ++ 
              (BS.unpack . BS.unwords $ [ repr loc, repr chromStart, repr chromEnd ])
            cdsloc <- case liftM2 (,) thickStart thickEnd of
-             Just (start, end) -> liftM Just $! bedCdsLoc loc start end
-             Nothing -> return Nothing
+             Just (start, end) | end > start -> liftM Just $! bedCdsLoc loc start end
+             _ -> return Nothing
            let n = toSeqLabel $ BS.copy name
                c = toSeqLabel $ BS.copy chrom
            return $! Transcript n n (OnSeq c loc) cdsloc
