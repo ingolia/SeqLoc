@@ -24,7 +24,7 @@ Library
                        Bio.SeqLoc.OnSeq,
                        Bio.SeqLoc.LocRepr,
                        Bio.SeqLoc.Transcript
-  Build-depends:       base >= 4.2 && < 5, bytestring, attoparsec >= 0.8.5, biocore
+  Build-depends:       base >= 4.2 && < 5, bytestring, attoparsec >= 0.8.5, biocore >= 0.2
   Hs-Source-Dirs:      src
   Ghc-options:         -Wall
 
@@ -38,6 +38,6 @@ Executable test-seqloc
                        Bio.SeqLoc.OnSeq,
                        Bio.SeqLoc.LocRepr
   Build-depends:       base >= 4.2 && < 5, bytestring, attoparsec >= 0.8.5,
-                       QuickCheck, random, biocore
+                       QuickCheck, random, biocore >= 0.2
   Hs-Source-Dirs:      src, test
   Ghc-options:         -Wall

@@ -32,17 +32,6 @@ import Bio.SeqLoc.LocRepr
 import Bio.SeqLoc.SeqLike
 import Bio.SeqLoc.Strand
 
-instance Enum Offset where
-  toEnum = Offset . toEnum
-  fromEnum = fromEnum . unOff
-
-instance Real Offset where
-  toRational = toRational . unOff
-
-instance Integral Offset where
-  (Offset n) `quotRem` (Offset d) = (Offset *** Offset) $ n `quotRem` d
-  toInteger = toInteger . unOff
-  
 -- | Stranded position in a sequence
 data Pos = Pos { offset :: !Offset -- ^ 0-based index of the position
                , strand :: !Strand -- ^ Strand of the position
