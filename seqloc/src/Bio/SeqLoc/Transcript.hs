@@ -97,7 +97,7 @@ utr3 trx = cds trx >>= utr3loc
   where utr3loc cdsloc = case Loc.endPos cdsloc of
           (Pos.Pos endoff Plus) | endoff < trxlast -> Just $! Loc.fromBoundsStrand (endoff + 1) trxlast Plus
           _ -> Nothing
-        trxlast = snd . Loc.bounds . unOnSeq . location $ trx
+        trxlast = (Loc.length . unOnSeq . location $ trx) - 1
 
 -- | Genomic location of CDS within the transcript
 cdsLocation :: Transcript -> Maybe SpliceSeqLoc
