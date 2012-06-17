@@ -23,7 +23,6 @@ complementing nucleotide characters.
 	ghci> :set -XOverloadedStrings
 	ghci> import Bio.SeqLoc.Strand
 	ghci> revCompl "GAttACA"
-	ghci> revCompl "GAttACA"
 	"TGTaaTC"
 	ghci> stranded Plus "GATTaca"
 	"GATTaca"
@@ -45,6 +44,7 @@ Displaying Positions and Locations
 ==================================
 
 	ghci> import Bio.SeqLoc.LocRepr
+	ghci> :m +Data.ByteString.Char8
 
 The `LocRepr` typeclass provides an interface for representing
 position and location data types in a format that is easy to read as
@@ -160,7 +160,7 @@ complementary location.
 Sequence Data
 =============
 
-	import Bio.SeqLoc.SeqLike as SeqLike
+	ghci> import Bio.SeqLoc.SeqLike as SeqLike
 
 The `SeqLike` typeclass in the `Bio.SeqLoc.SeqLike` module has a
 simple interface to allow the extraction of subsequences based on
@@ -186,7 +186,7 @@ full sequence whenever possible, but the use of functions such as
 Spliced Locations
 =================
 
-	import Bio.SeqLoc.SpliceLocation as SpLoc
+	ghci> import Bio.SeqLoc.SpliceLocation as SpLoc
 
 The `SpliceLoc` type in the `Bio.SeqLoc.SpliceLocation` package
 provides spliced locations, designed to model the structure of
