@@ -1,15 +1,20 @@
 Name:                seqloc
-Version:             0.5.0.1
+Version:             0.5.0.2
 Cabal-Version:       >= 1.2
 Synopsis:            Handle sequence locations for bioinformatics
 Description:         Handle sequence locations for bioinformatics
-Homepage:            http://www.ingolia-lab.org/software/seqloc/
+Homepage:            http://www.ingolia-lab.org/seqloc-tutorial.html
 License:             MIT
 License-file:        LICENSE
 Author:              Nick Ingolia
 Maintainer:          nick@ingolia.org
 Build-Type:          Simple
 Cabal-Version:       >= 1.4
+
+Source-Repository head
+  type: git
+  location: http://github.com/ingolia/seqloc
+  subdir: seqloc
 
 Category:            Bioinformatics
 
