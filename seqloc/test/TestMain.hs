@@ -1,4 +1,4 @@
-{-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE ExistentialQuantification, BangPatterns #-}
 module Main
     where
 
@@ -45,6 +45,7 @@ tests = [ T "Strand revCompl"               test_Strand_revCompl
         , T "Contig loc outof/into inverse" property_ContigLocOutofInto
         , T "Contig into based on bounds"   test_Contig_IntoBounds
         , T "Contig outof based on bounds"  test_Contig_OutofBounds
+        , T "Contig allPos/outof equiv"     property_Contig_allPos_outof
         , T "Contig seqData"                property_Contig_seqData
         , T "Contig seqDataPadded"          property_Contig_seqDataPadded
         , T "Contig seqData2"               property_Contig_seqData2
@@ -53,13 +54,14 @@ tests = [ T "Strand revCompl"               test_Strand_revCompl
         , T "Contig fromBoundsStrand"       property_Contig_fromBoundsStrand
         , T "Contig overlaps"               property_Contig_overlaps  
         , T "Contig repr"                   test_Contig_repr
-        
+          
         , T "Loc revCompl"                  test_Loc_Minus
         , T "Loc pos into/outof inverse"    property_LocIntoOutof
         , T "Loc pos outof/into inverse"    property_LocOutofInto
         , T "Loc outof based on bounds"     test_Loc_OutofBounds
         , T "Loc loc outof/into inverse"    property_LocCLocOutofInto
         , T "Loc outof association"         property_LocOutofAssoc
+        , T "Loc allPos/outof equiv"        property_Loc_allPos_outof        
         , T "Loc locOutof"                  property_SpLocOutof
         , T "Loc locOutof valid"            property_SpLocOutofGood
         , T "Loc within"                    property_Loc_Within
@@ -84,9 +86,6 @@ genName = liftM (SeqLabel . LBS.pack) $ genNameLength >>= flip replicateM genNam
 
 instance Arbitrary SeqLabel where
     arbitrary = genName
-
-instance Show SeqLabel where
-  show = show . unSeqLabel
 
 test_revCompl :: (Eq s, Stranded s) => s -> Bool
 test_revCompl s = (revCompl . revCompl) s == s
@@ -187,6 +186,14 @@ test_Contig_OutofBounds :: Loc.ContigLoc -> Pos.Pos -> Bool
 test_Contig_OutofBounds contig pos
     = let !offset = Pos.offset pos
       in (isJust $ Loc.posOutof pos contig) == (offset >= 0 && offset < Loc.length contig)
+
+property_Contig_allPos_outof :: Loc.ContigLoc -> Property
+property_Contig_allPos_outof contig
+  = forAll (choose (0, fromIntegral $ Loc.length contig - 1)) $ \ioff ->
+  let p = drop ioff $ Loc.allPos contig
+  in and [ not $ null p
+         , Loc.posOutof (Pos.Pos (Pos.Offset $ fromIntegral ioff) Plus) contig == Just (head p)
+         ]
 
 property_Contig_seqData :: Loc.ContigLoc -> Property
 property_Contig_seqData contig
@@ -312,6 +319,14 @@ property_SpLocOutofGood subloc outerloc =
                        mapM (flip Loc.clocOutof outerloc) $
                        Loc.toContigs subloc
   in (isJust mOutofContigs) ==> mOutofContigs == mContigsOutof
+
+property_Loc_allPos_outof :: SpLoc.SpliceLoc -> Property
+property_Loc_allPos_outof sploc
+  = forAll (choose (0, fromIntegral $ Loc.length sploc - 1)) $ \ioff ->
+  let p = drop ioff $ Loc.allPos sploc
+  in and [ not $ null p
+         , Loc.posOutof (Pos.Pos (Pos.Offset $ fromIntegral ioff) Plus) sploc == Just (head p)
+         ]
 
 property_Loc_seqData :: SpLoc.SpliceLoc -> Property
 property_Loc_seqData loc

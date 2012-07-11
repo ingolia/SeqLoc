@@ -52,6 +52,10 @@ class Location l where
   -- 'startPos'.
   endPos :: l -> Pos.Pos
 
+  -- | List of sequence positions in the location, in order from the
+  -- 5' end to the 3' end of the location strand.
+  allPos :: l -> [Pos.Pos]
+
   -- | Extract 'Just' the nucleotide 'SeqLike' for the sequence
   -- location, or 'Nothing' if f any part of the location lies outside
   -- the bounds of the sequence.
@@ -157,6 +161,10 @@ instance Location ContigLoc where
     = case str of
         Plus      -> Pos.Pos (seq5 + len - 1) str
         Minus -> Pos.Pos seq5             str
+  allPos (ContigLoc seq5 len str) 
+    = case str of
+        Plus ->  [ Pos.Pos (seq5+o)         str | o <- [0..(len - 1)] ]
+        Minus -> [ Pos.Pos (seq5+len-(1+o)) str | o <- [0..(len - 1)] ]
   clocInto = clocClocInto
   clocOutof = clocClocOutof
   extend = clocExtend

@@ -88,6 +88,7 @@ instance Location SpliceLoc where
   posOutof pos = posOutofContigs pos . contigs
   startPos = startPos . firstContig
   endPos = endPos . lastContig
+  allPos = concatMap allPos . contigs
   clocInto = slocClocInto
   clocOutof = slocClocOutof
   extend = slocExtend
