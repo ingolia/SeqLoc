@@ -1,6 +1,6 @@
 Name:                seqloc
-Version:             0.5.1.0
-Cabal-Version:       >= 1.6
+Version:             0.5.1.1
+Cabal-Version:       >= 1.14
 Synopsis:            Handle sequence locations for bioinformatics
 Description:         Handle sequence locations for bioinformatics
 Homepage:            http://www.ingolia-lab.org/seqloc-tutorial.html
@@ -16,9 +16,18 @@ Source-Repository head
   location: http://github.com/ingolia/seqloc
   subdir: seqloc
 
-Flag Tests
-  Description: Build test program
-  Default:     False
+Test-Suite test-seqloc
+  Type: exitcode-stdio-1.0
+  Main-is:             TestMain.hs
+  Other-modules:       Bio.SeqLoc.Strand, Bio.SeqLoc.Position,
+                       Bio.SeqLoc.SeqLike, Bio.SeqLoc.Location,
+                       Bio.SeqLoc.SpliceLocation,
+                       Bio.SeqLoc.OnSeq,
+                       Bio.SeqLoc.LocRepr
+  Build-depends:       base >= 4.2 && < 5, bytestring, attoparsec >= 0.8.5,
+                       QuickCheck, random, biocore >= 0.2
+  Hs-Source-Dirs:      src, test
+  Default-Language:    Haskell2010
 
 Library
   Exposed-modules:     Bio.SeqLoc.Strand, Bio.SeqLoc.Position,
@@ -30,17 +39,5 @@ Library
   Build-depends:       base >= 4.2 && < 5, bytestring, attoparsec >= 0.8.5, biocore >= 0.2
   Hs-Source-Dirs:      src
   Ghc-options:         -Wall
+  Default-Language:    Haskell2010
 
-Executable test-seqloc
-  if !flag(Tests)
-     Buildable: False
-  Main-is:             TestMain.hs
-  Other-modules:       Bio.SeqLoc.Strand, Bio.SeqLoc.Position,
-                       Bio.SeqLoc.SeqLike, Bio.SeqLoc.Location,
-                       Bio.SeqLoc.SpliceLocation,
-                       Bio.SeqLoc.OnSeq,
-                       Bio.SeqLoc.LocRepr
-  Build-depends:       base >= 4.2 && < 5, bytestring, attoparsec >= 0.8.5,
-                       QuickCheck, random, biocore >= 0.2
-  Hs-Source-Dirs:      src, test
-  Ghc-options:         -Wall
