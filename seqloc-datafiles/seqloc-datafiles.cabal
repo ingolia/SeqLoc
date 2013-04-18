@@ -49,6 +49,17 @@ Executable bed-to-gtf
   Ghc-options:         -Wall -rtsopts
   C-Sources:           src/rtsopts.c
 
+Executable gtf-introns
+  Main-is:             GtfIntrons.hs
+  Other-modules:       Bio.SeqLoc.GTF, Bio.SeqLoc.TranscriptTable, Bio.SeqLoc.ZeptoUtils
+  Build-depends:       base >= 4.2 && < 5, bytestring,
+                       attoparsec >= 0.8.5, hashable, unordered-containers,
+                       iteratee >= 0.8.1, seqloc >= 0.3.1, biocore >= 0.2,
+                       QuickCheck, random, cmdtheline
+  Hs-Source-Dirs:      src, test
+  Ghc-options:         -Wall -rtsopts
+  C-Sources:           src/rtsopts.c
+
 Executable test-gtf
   if !flag(Tests)
      Buildable: False
@@ -74,15 +85,3 @@ Executable test-bed
   Hs-Source-Dirs:      src, test
   Ghc-options:         -Wall
 
-Executable gtf-introns
-  if !flag(Tests)
-     Buildable: False
-  Main-is:             GtfIntrons.hs
-  Other-modules:       Bio.SeqLoc.GTF, Bio.SeqLoc.TranscriptTable, Bio.SeqLoc.ZeptoUtils
-  Build-depends:       base >= 4.2 && < 5, bytestring,
-                       attoparsec >= 0.8.5, hashable, unordered-containers,
-                       iteratee >= 0.8.1, seqloc >= 0.3.1, biocore >= 0.2,
-                       QuickCheck, random
-  Hs-Source-Dirs:      src, test
-  Ghc-options:         -Wall -rtsopts
-  C-Sources:           src/rtsopts.c
