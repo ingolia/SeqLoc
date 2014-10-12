@@ -24,6 +24,7 @@ import qualified Bio.SeqLoc.SpliceLocation as SpLoc
 import Bio.SeqLoc.Strand
 import qualified Bio.SeqLoc.SeqLike as SeqLike
 
+import qualified Bio.SeqLoc.LocMap as LM
 import qualified Bio.SeqLoc.ShiftedVector as ShV
 
 main :: IO ()
@@ -38,9 +39,11 @@ tests = [ T "Strand revCompl"               test_Strand_revCompl
         , T "ShVector singleton"            property_ShVector_singleton
         , T "ShVector update1"              property_ShVector_update1
         , T "ShVector update2"              property_ShVector_update2
---        , T "ShVector ensureDown"           property_ShVector_ensureDown
---        , T "ShVector ensureUp"             property_ShVector_ensureUp
 
+        , T "LocMap hit inside only"        property_LocMap_hitIn
+        , T "LocMap hit all"                property_LocMap_hitAll
+        , T "LocMap hit multi"              property_LocMap_hitMulti
+          
         , T "Pos revCompl"                  test_Pos_revCompl
         , T "Pos atPos"                     property_Pos_atPos
         , T "Pos atPos2"                    property_Pos_atPos2
@@ -426,6 +429,41 @@ property_ShVector_update2 =
            sv1 ShV.!? ((min i j) - 1) == [],
            sv1 ShV.!? ((max i j) + 1) == [],
            and [ sv1 ShV.!? k == [] | k <- [(min i j + 1)..(max i j - 1)] ] ]
+
+property_LocMap_hitIn :: Loc.ContigLoc -> Pos.Pos -> Property
+property_LocMap_hitIn contig pos =
+  forAll genPositiveOffset $ \binsz -> 
+  let isin = isJust $ Loc.posInto pos contig
+      ploc = Loc.fromPosLen pos 1
+      lm = LM.insertLoc contig contig (LM.emptyLM binsz)
+  in collect isin $ isin ==> not (null (LM.queryLoc ploc lm))
+
+property_LocMap_hitAll :: Loc.ContigLoc -> Pos.Pos -> Property
+property_LocMap_hitAll contig pos =
+  forAll genPositiveOffset $ \binsz -> 
+  let isin = isJust $ Loc.posInto pos contig
+      ploc = Loc.fromPosLen pos 1
+      lm = LM.insertLoc contig contig (LM.emptyLM binsz)
+      ishit = not $ null (LM.queryLoc ploc lm)
+  in collect ishit $ ishit || not isin
+
+property_LocMap_hitMulti :: Loc.ContigLoc -> Loc.ContigLoc -> Loc.ContigLoc -> Pos.Pos -> Property
+property_LocMap_hitMulti ca cb cc pos =
+  forAll genPositiveOffset $ \binsz -> 
+  let isina = isJust $ Loc.posInto pos ca
+      isinb = isJust $ Loc.posInto pos cb
+      isinc = isJust $ Loc.posInto pos cc
+      ploc = Loc.fromPosLen pos 1
+      lm = LM.insertLoc cc cc $
+           LM.insertLoc cb cb $
+           LM.insertLoc ca ca (LM.emptyLM binsz)
+      hita = ca `elem` LM.queryLoc ploc lm
+      hitb = cb `elem` LM.queryLoc ploc lm
+      hitc = cc `elem` LM.queryLoc ploc lm
+  in collect (hita, hitb, hitc) $
+     and [ hita || not isina,
+           hitb || not isinb,
+           hitc || not isinc ]
 
 -- Utilities
 
