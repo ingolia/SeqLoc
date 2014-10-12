@@ -1,4 +1,4 @@
-{-# LANGUAGE ExistentialQuantification, BangPatterns #-}
+{-# LANGUAGE ExistentialQuantification, BangPatterns, ScopedTypeVariables #-}
 module Main
     where
 
@@ -24,6 +24,8 @@ import qualified Bio.SeqLoc.SpliceLocation as SpLoc
 import Bio.SeqLoc.Strand
 import qualified Bio.SeqLoc.SeqLike as SeqLike
 
+import qualified Bio.SeqLoc.ShiftedVector as ShV
+
 main :: IO ()
 main = mapM_ runTest tests
 
@@ -32,6 +34,12 @@ tests = [ T "Strand revCompl"               test_Strand_revCompl
         , T "Char revCompl"                 property_Char_revCompl
         , T "ByteString revCompl"           property_ByteString_revCompl
         , T "Sequence revCompl"             property_Sequence_revCompl
+
+        , T "ShVector singleton"            property_ShVector_singleton
+        , T "ShVector update1"              property_ShVector_update1
+        , T "ShVector update2"              property_ShVector_update2
+--        , T "ShVector ensureDown"           property_ShVector_ensureDown
+--        , T "ShVector ensureUp"             property_ShVector_ensureUp
 
         , T "Pos revCompl"                  test_Pos_revCompl
         , T "Pos atPos"                     property_Pos_atPos
@@ -71,6 +79,7 @@ tests = [ T "Strand revCompl"               test_Strand_revCompl
         , T "SpLoc repr"                    test_SpLoc_repr
         , T "SpLoc termini/revCompl"        property_SpLoc_terminiMinus
         , T "SpLoc termini/extend"          property_SpLoc_terminiExtend
+
         ]
 
 
@@ -382,6 +391,42 @@ property_SpLoc_terminiExtend loc
          , Loc.endPos extloc == strandSlide (Loc.endPos loc) ext3
          ]
 
+property_ShVector_singleton :: Property
+property_ShVector_singleton =
+  forAll (liftM fromIntegral genOffset) $ \i ->
+  forAll (liftM fromIntegral genOffset) $ \j ->
+  forAll arbitrary $ \(ch :: Char) ->
+  let sv = ShV.singleton i [ch]
+  in and [ sv ShV.!? i == [ch],
+           sv ShV.!? (i - 1) == [],
+           sv ShV.!? (i + 1) == [],
+           sv ShV.!? j == if (i == j) then [ch] else [] ]
+
+property_ShVector_update1 :: Property
+property_ShVector_update1 = 
+  forAll (liftM fromIntegral genOffset) $ \i ->
+  forAll arbitrary $ \(chi :: Char) ->
+  let sv0 = ShV.empty
+      sv1 = sv0 ShV.// [(i, [chi])]
+  in and [ sv1 ShV.!? i == [chi],
+           sv1 ShV.!? (i - 1) == [],
+           sv1 ShV.!? (i + 1) == [] ]
+
+property_ShVector_update2 :: Property
+property_ShVector_update2 = 
+  forAll (liftM fromIntegral genOffset) $ \i ->
+  forAll (liftM fromIntegral genOffset) $ \j ->
+  forAll arbitrary $ \(chi :: Char) ->
+  forAll arbitrary $ \(chj :: Char) ->
+  let sv0 = ShV.empty
+      sv1 = sv0 ShV.// [(i, [chi]), (j, [chj])]
+  in (i /= j) ==>
+     and [ sv1 ShV.!? i == [chi],
+           sv1 ShV.!? j == [chj],
+           sv1 ShV.!? ((min i j) - 1) == [],
+           sv1 ShV.!? ((max i j) + 1) == [],
+           and [ sv1 ShV.!? k == [] | k <- [(min i j + 1)..(max i j - 1)] ] ]
+
 -- Utilities
 
 data Test = forall t . Testable t => T String t
@@ -390,7 +435,7 @@ runTest :: Test -> IO ()
 runTest (T name test) = do
   putStr $ name ++ replicate (40 - length name) '.' ++ "  "
   quickCheckWith args test
-    where args = stdArgs { maxDiscard = 100000 }
+    where args = stdArgs -- { maxDiscard = 100000 }
 
 -- | Constrained position generators
 

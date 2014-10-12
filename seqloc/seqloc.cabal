@@ -1,5 +1,5 @@
 Name:                seqloc
-Version:             0.5.1.1
+Version:             0.6
 Cabal-Version:       >= 1.14
 Synopsis:            Handle sequence locations for bioinformatics
 Description:         Handle sequence locations for bioinformatics
@@ -23,9 +23,10 @@ Test-Suite test-seqloc
                        Bio.SeqLoc.SeqLike, Bio.SeqLoc.Location,
                        Bio.SeqLoc.SpliceLocation,
                        Bio.SeqLoc.OnSeq,
-                       Bio.SeqLoc.LocRepr
+                       Bio.SeqLoc.LocRepr,
+                       Bio.SeqLoc.ShiftedVector
   Build-depends:       base >= 4.2 && < 5, bytestring, attoparsec >= 0.8.5,
-                       QuickCheck, random, biocore >= 0.2
+                       QuickCheck, random, biocore >= 0.2, unordered-containers, vector
   Hs-Source-Dirs:      src, test
   Default-Language:    Haskell2010
 
@@ -35,8 +36,9 @@ Library
                        Bio.SeqLoc.SpliceLocation,
                        Bio.SeqLoc.OnSeq,
                        Bio.SeqLoc.LocRepr,
-                       Bio.SeqLoc.Transcript
-  Build-depends:       base >= 4.2 && < 5, bytestring, attoparsec >= 0.8.5, biocore >= 0.2
+                       Bio.SeqLoc.Transcript,
+                       Bio.SeqLoc.ShiftedVector
+  Build-depends:       base >= 4.2 && < 5, bytestring, attoparsec >= 0.8.5, biocore >= 0.2, unordered-containers, vector
   Hs-Source-Dirs:      src
   Ghc-options:         -Wall
   Default-Language:    Haskell2010
