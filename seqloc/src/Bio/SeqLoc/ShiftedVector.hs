@@ -54,7 +54,7 @@ modifySome sv0 is f | Prelude.null is = sv0
         ihigh = maximum is
         sv' = ensureLow ilow . ensureHigh ihigh $ sv0
         modifyUnsafe sv = let js = map (subtract (zerois sv)) is
-                              ys = [ f (sv !? j) | j <- js ]
+                              ys = [ f (sv !? i) | i <- is ]
                           in sv { vector = vector sv V.// (zip js ys) }
 
 ensureLow :: Int -> ShiftedVector a -> ShiftedVector a
