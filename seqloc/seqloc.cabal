@@ -27,7 +27,7 @@ Test-Suite test-seqloc
                        Bio.SeqLoc.ShiftedVector,
                        Bio.SeqLoc.LocMap
   Build-depends:       base >= 4.2 && < 5, bytestring, attoparsec >= 0.8.5,
-                       QuickCheck, random, biocore >= 0.2, unordered-containers, vector
+                       QuickCheck, random, biocore >= 0.2, unordered-containers, vector, hashable
   Hs-Source-Dirs:      src, test
   Default-Language:    Haskell2010
 
@@ -40,7 +40,7 @@ Library
                        Bio.SeqLoc.Transcript,
                        Bio.SeqLoc.ShiftedVector,
                        Bio.SeqLoc.LocMap
-  Build-depends:       base >= 4.2 && < 5, bytestring, attoparsec >= 0.8.5, biocore >= 0.2, unordered-containers, vector
+  Build-depends:       base >= 4.2 && < 5, bytestring, attoparsec >= 0.8.5, biocore >= 0.2, unordered-containers, vector, hashable
   Hs-Source-Dirs:      src
   Ghc-options:         -Wall
   Default-Language:    Haskell2010

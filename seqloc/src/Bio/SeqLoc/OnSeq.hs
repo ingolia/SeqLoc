@@ -31,6 +31,8 @@ import qualified Data.ByteString.Char8 as BS
 import qualified Data.ByteString.Lazy.Char8 as LBS
 import Data.ByteString.Internal (c2w)
 
+import Data.Hashable
+
 import qualified Data.Attoparsec.Zepto as ZP
 
 import Bio.Core.Sequence
@@ -51,6 +53,10 @@ data OnSeq s = OnSeq { onSeqLabel :: !SeqLabel, unOnSeq :: !s } deriving (Eq, Or
 
 at :: BS.ByteString
 at = BS.singleton '@'
+
+instance Hashable SeqLabel where
+  hashWithSalt salt = hashWithSalt salt . unSL
+  hash = hash . unSL
 
 instance Stranded s => Stranded (OnSeq s) where
   revCompl (OnSeq name obj) = OnSeq name (revCompl obj)
