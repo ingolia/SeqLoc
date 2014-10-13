@@ -51,9 +51,11 @@ genomeToTrx trx input moutput conf
 
 data InputType = InputBed | InputBedPE deriving (Read, Show, Ord, Eq)
 data Strandedness = FwdOnly | RevOnly | Both deriving (Read, Show, Ord, Eq)
+data Coding = TrxRelative | CdsRelative | CdsOnly deriving (Read, Show, Ord, Eq)
 
 data Conf = Conf { cInputType :: !InputType,
                    cStrandedness :: !Strandedness,
+                   cCodingRelative :: !Coding,
                    cReportNoHit :: !Bool
                  } deriving (Read, Show)
 
@@ -73,6 +75,7 @@ argConf :: Term Conf
 argConf = Conf <$>
           confInputType <*>
           confStrandedness <*>
+          confCodingRelative <*>
           confReportNoHit
   where confInputType :: Term InputType
         confInputType = value $ vFlag InputBed [(InputBedPE, (optInfo [ "bedpe" ]) { optName = "Bed PE (bedtools) format", optDoc = "Bed PE (bedtools) format" })]
@@ -81,6 +84,9 @@ argConf = Conf <$>
                            [( FwdOnly, (optInfo [ "fwd"  ]) { optName = "Forward feature strand only", optDoc = "Forward feature strand only" }),
                             ( RevOnly, (optInfo [ "rev"  ]) { optName = "Reverse feature strand only", optDoc = "Reverse feature strand only" }),
                             ( Both,    (optInfo [ "both" ]) { optName = "Both feature strands",        optDoc = "Both feature strands" })]
+        confCodingRelative :: Term Bool
+        confCodingRelative = value $ vFlag Transcript 
+                             flag $ (optInfo [ "c", "cds" ]) { optName = "Coords relative to CDS start", optDoc = "Coords relative to CDS start" }
         confReportNoHit :: Term Bool
         confReportNoHit = value $ flag $ (optInfo [ "n", "no-hit" ]) { optName = "Report no-hit lines", optDoc = "Report no-hit lines" }
 
@@ -121,5 +127,19 @@ remapLoc trxs conf l = mapMaybe locInto cands
                        (Loc.strand tloc == Minus && cStrandedness conf == FwdOnly)
                        then Nothing
                        else Just (OnSeq (trxId t) tloc)
+
+locInto :: Transcript -> Conf -> ContigSeqLoc -> ContigSeqLoc
+locinto t conf l = Loc.clocInto (unOnSeq l) (unOnSeq tsloc) >>=
+                   strandCheck >>= \tloc ->
+                   cdsAdjust (OnSeq (trxId t) tloc)
+  where tsloc = location t
+        strandCheck tloc = case cStrandedness conf of
+          FwdOnly -> if (Loc.strand tloc == Plus)  then Just tloc else Nothing
+          RevOnly -> if (Loc.strand tloc == Minus) then Just tloc else Nothing
+          Both    -> Just tloc
+        cdsAdjust = case cCodingRelative conf of
+          
+                                                               
                    
-                          
+                   
+                        
