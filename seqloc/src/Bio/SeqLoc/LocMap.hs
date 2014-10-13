@@ -3,11 +3,12 @@ module Bio.SeqLoc.LocMap
        where
 
 import qualified Data.HashMap.Strict as HM
-import qualified Data.Vector as V
+import Data.List
 
 import qualified Bio.SeqLoc.Location as Loc
 import Bio.SeqLoc.OnSeq
 import qualified Bio.SeqLoc.Position as Pos
+import Bio.SeqLoc.Transcript
 
 import qualified Bio.SeqLoc.ShiftedVector as ShV
 
@@ -42,3 +43,7 @@ insertSeqLoc sl x slm0 = let lm0 = HM.lookupDefault (emptyLM $ slmBinSize slm0) 
 querySeqLoc :: (Loc.Location l) => OnSeq l -> SeqLocMap a -> [a]
 querySeqLoc sl slm = maybe [] (queryLoc (unOnSeq sl)) $
                      HM.lookup (onSeqLabel sl) (locmaps slm)
+
+transcriptSeqLocMap :: Pos.Offset -> [Transcript] -> SeqLocMap Transcript
+transcriptSeqLocMap bsz = foldl' insertTrx (emptySLM bsz)
+  where insertTrx slm0 t = insertSeqLoc (location t) t slm0
