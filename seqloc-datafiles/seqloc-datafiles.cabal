@@ -25,6 +25,7 @@ Library
   Other-modules:       Bio.SeqLoc.ZeptoUtils
   Build-depends:       base >= 4.2 && < 5, bytestring,
                        attoparsec >= 0.8.5, hashable, unordered-containers,
+                       lifted-base >= 0.2.3, transformers-base >= 0.4.3,
                        iteratee >= 0.8.1, seqloc >= 0.3.1, biocore >= 0.2
   Hs-Source-Dirs:      src
   Ghc-options:         -Wall

@@ -1,21 +1,27 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings, FlexibleContexts #-}
 
 {-| Utilities for reading and writing BED format gene annotations -}
 module Bio.SeqLoc.Bed
        ( readBedTranscripts
        , bedZP, bedTranscriptEnum
+       , bedConduit
        , transcriptToBed, transcriptToBedStd
        )
        where
 
 import Control.Applicative
+import qualified Control.Exception.Lifted as E
 import Control.Monad
+import Control.Monad.Base
 import qualified Data.ByteString.Char8 as BS
 import Data.List
 import Data.Maybe
 import Data.Ord
 
 import qualified Data.Attoparsec.Zepto as ZP
+import qualified Data.Conduit as C
+import qualified Data.Conduit.Binary as CB
+import qualified Data.Conduit.List as C
 import qualified Data.Iteratee as Iter
 import qualified Data.Iteratee.Char as IterChar
 
@@ -77,6 +83,15 @@ bedTranscriptEnum = Iter.joinI . IterChar.enumLinesBS . Iter.joinI . bedLineEnum
 bedLineEnum :: (Monad m) => Iter.Enumeratee [BS.ByteString] [Transcript] m a
 bedLineEnum = Iter.convStream $ Iter.head >>= liftM (: []) . handleErr . ZP.parse bedZP
   where handleErr = either (Iter.throwErr . Iter.iterStrExc) return 
+
+-- | Conduit from a 'BS.ByteString' source such as a BED file to a
+-- source of 'Transcript' annotations from the file.
+bedConduit :: (Monad m, MonadBase IO m) => C.Conduit BS.ByteString m Transcript
+bedConduit = CB.lines C.$= loop
+  where loop = C.head >>= maybe (return ())
+               (\l -> case ZP.parse bedZP l of
+                   Left err -> E.ioError . userError $ err ++ "\n  in BED line\n"  ++ show l
+                   Right res -> C.yield res >> loop)
 
 -- | Minimalistic 'ZP.Parser'-style parser for a BED format line, not
 -- including the trailing newline.
