@@ -4,7 +4,6 @@ module Main
        where  
 
 import Control.Applicative
-import Control.Exception
 import qualified Control.Exception.Lifted as E
 import Control.Monad
 import Control.Monad.Base
@@ -90,9 +89,9 @@ data RegionSpec = RegionSpec { rsRegion :: !TranscriptRegion
                 deriving (Show)
 
 validRegionSpec :: RegionSpec -> Bool
-validRegionSpec (RegionSpec _rgn (Just startoff) (Just len) Nothing       _toolong) = True
-validRegionSpec (RegionSpec _rgn (Just startoff) Nothing    (Just endoff) _toolong) = True
-validRegionSpec (RegionSpec _rgn Nothing         (Just len) (Just endoff) _toolong) = True
+validRegionSpec (RegionSpec _rgn (Just _startoff) (Just _len) Nothing        _toolong) = True
+validRegionSpec (RegionSpec _rgn (Just _startoff) Nothing     (Just _endoff) _toolong) = True
+validRegionSpec (RegionSpec _rgn Nothing          (Just _len) (Just _endoff) _toolong) = True
 validRegionSpec _ = False
 
 regionSpliceLoc :: RegionSpec -> Transcript -> Maybe Loc.SpliceLoc
@@ -112,18 +111,18 @@ cOutFile conf = fromMaybe defaultOutput . cOutput $ conf
   where defaultOutput = (dropExtension . cInput $ conf) ++ "_subregion" ++ (takeExtension . cInput $ conf)
 
 argConf :: Term Conf
-argConf = Conf <$> bedin <*> bedout <*> regionspec
+argConf = Conf <$> argInput <*> argOutput <*> regionspec
 
-bedin :: Term FilePath
-bedin = required $ opt Nothing $ ( optInfo [ "i" ])
+argInput :: Term FilePath
+argInput = required $ opt Nothing $ ( optInfo [ "i" ])
   { optName = "INPUT.BED", optDoc = "BED input" }
 
-bedout :: Term (Maybe FilePath)
-bedout = value $ opt Nothing $ ( optInfo [ "o" ])
+argOutput :: Term (Maybe FilePath)
+argOutput = value $ opt Nothing $ ( optInfo [ "o" ])
   { optName = "OUTPUT.BED", optDoc = "BED output" }
 
-relregion :: Term TranscriptRegion
-relregion = ret . fmap validate . value $
+argRegion :: Term TranscriptRegion
+argRegion = ret . fmap validate . value $
             vFlag Nothing $
             [ (Just WholeTrx, (optInfo [ "whole-trx" ]) { optDoc = "Region relative to whole transcript" })
             , (Just Utr5,     (optInfo [ "utr5" ])      { optDoc = "Region relative to 5' UTR" })
@@ -135,35 +134,35 @@ relregion = ret . fmap validate . value $
         noRegion = msgFail . PP.text $
                    "Specify a reference transcription region (whole transcript, CDS, etc.)"
 
-toolong :: Term TooLong
-toolong = ret . fmap validate . value $
-          vFlag Nothing $
-          [ (Just TooLongExtend,   (optInfo [ "extend" ])   { optDoc = "Extend beyond reference region" })
-          , (Just TooLongTruncate, (optInfo [ "truncate" ]) { optDoc = "Truncate to lie within reference region " })
-          , (Just TooLongDiscard,  (optInfo [ "discard" ])  { optDoc = "Discard when lying outside reference region" })
-          ]
+argTooLong :: Term TooLong
+argTooLong = ret . fmap validate . value $
+             vFlag Nothing $
+             [ (Just TooLongExtend,   (optInfo [ "extend" ])   { optDoc = "Extend beyond reference region" })
+             , (Just TooLongTruncate, (optInfo [ "truncate" ]) { optDoc = "Truncate to lie within reference region " })
+             , (Just TooLongDiscard,  (optInfo [ "discard" ])  { optDoc = "Discard when lying outside reference region" })
+             ]
   where validate :: Maybe TooLong -> Err TooLong
         validate = maybe noarg return
         noarg = msgFail . PP.text $
                 "Specify how subregions extending outside the reference region should be handled (truncation etc.)"
 
-startoff :: Term (Maybe Int)
-startoff = value $ opt Nothing $ ( optInfo [ "start-off" ]) { optName = "DELTA-START", optDoc = "Offset of start position, positive is more 3'" }
+argStartOffset :: Term (Maybe Int)
+argStartOffset = value $ opt Nothing $ ( optInfo [ "start-off" ]) { optName = "DELTA-START", optDoc = "Offset of start position, positive is more 3'" }
 
-endoff :: Term (Maybe Int)
-endoff = value $ opt Nothing $ ( optInfo [ "end-off" ]) { optName = "DELTA-END", optDoc = "Offset of end position, positive is more 3'" }
+argEndOffset :: Term (Maybe Int)
+argEndOffset = value $ opt Nothing $ ( optInfo [ "end-off" ]) { optName = "DELTA-END", optDoc = "Offset of end position, positive is more 3'" }
 
-rgnlen :: Term (Maybe Int)
-rgnlen = value $ opt Nothing $ ( optInfo [ "length" ]) { optName = "LENGTH", optDoc = "Length of the sub-region" }
+argLength :: Term (Maybe Int)
+argLength = value $ opt Nothing $ ( optInfo [ "length" ]) { optName = "LENGTH", optDoc = "Length of the sub-region" }
 
 regionspec :: Term RegionSpec
 regionspec = ret . fmap validate $
              RegionSpec <$>
-             relregion <*>
-             (liftM fromIntegral <$> startoff) <*>
-             (liftM fromIntegral <$> rgnlen) <*>
-             (liftM fromIntegral <$> endoff) <*>
-             toolong
+             argRegion <*>
+             (liftM fromIntegral <$> argStartOffset) <*>
+             (liftM fromIntegral <$> argLength) <*>
+             (liftM fromIntegral <$> argEndOffset) <*>
+             argTooLong
   where validate :: RegionSpec -> Err RegionSpec
         validate rs = if validRegionSpec rs
                       then return rs
