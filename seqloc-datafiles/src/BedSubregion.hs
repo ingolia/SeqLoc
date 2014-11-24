@@ -99,7 +99,23 @@ regionSpliceLoc (RegionSpec rgn (Just startoff) (Just len) Nothing toolong) trx
   = do base <- trxRegion rgn trx
        cloc <- handleEnds toolong base $ Loc.fromPosLen (Pos.slide (Loc.startPos base) startoff) len
        return $! clocOutofExtended cloc (unOnSeq . location $ trx)
-regionSpliceLoc rs _ = error $ "Unimplemented region selection " ++ show rs
+regionSpliceLoc (RegionSpec rgn (Just startoff) Nothing (Just endoff) toolong) trx
+  = do base <- trxRegion rgn trx
+       let start = (Pos.offset . Loc.startPos $ base) + startoff
+           end = (Pos.offset . Loc.endPos $ base) + endoff
+       if start <= end
+          then do cloc <- handleEnds toolong base $ Loc.fromStartEnd start end
+                  return $! clocOutofExtended cloc (unOnSeq . location $ trx)
+          else Nothing
+regionSpliceLoc (RegionSpec rgn Nothing (Just len) (Just endoff) toolong) trx
+  = do base <- trxRegion rgn trx
+       let end = (Pos.offset . Loc.endPos $ base) + endoff
+           start = 1 + end - len
+       if start <= end
+          then do cloc <- handleEnds toolong base $ Loc.fromStartEnd start end
+                  return $! clocOutofExtended cloc (unOnSeq . location $ trx)
+          else Nothing
+regionSpliceLoc rs _ = error $ "Invalid region selection " ++ show rs
 
 data Conf = Conf { cInput :: !FilePath
                  , cOutput :: !(Maybe FilePath)
