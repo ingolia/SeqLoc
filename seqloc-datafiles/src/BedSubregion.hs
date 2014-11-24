@@ -13,6 +13,7 @@ import qualified Data.ByteString.Char8 as BS
 import qualified Data.Conduit as C
 import qualified Data.Conduit.Binary as CB
 import qualified Data.Conduit.List as C
+import Data.List
 import Data.Maybe
 
 import qualified Bio.SeqLoc.Bed as Bed
@@ -47,10 +48,22 @@ handleTranscripts :: (MonadIO m, R.MonadResource m) => Conf -> C.Sink Transcript
 handleTranscripts conf = C.bracketP (openFile (cOutFile conf) WriteMode) hClose loop
   where loop hout = C.head >>= maybe (return ()) (\t -> handleOne t >> loop hout)
           where handleOne t = maybe (return ()) writeSubregion $ regionSpliceLoc (cRegionSpec conf) t
-                  where writeSubregion sl = let t' = t { location = (location t) { unOnSeq = sl }, cds = Nothing }
-                                            in liftIO $ BS.hPutStrLn hout $ Bed.transcriptToBedStd t'
+                  where writeSubregion sl = liftIO . BS.hPutStrLn hout . Bed.transcriptToBedStd $ subtranscript sl
+                        subtranscript sl = Transcript { geneId = gene', trxId = trx', location = loc', cds = Nothing }
+                          where loc' = (location t) { unOnSeq = sl }
+                                gene' = toSeqLabel . flip BS.append suffix . unSeqLabel . geneId $ t
+                                trx' = toSeqLabel . flip BS.append suffix . unSeqLabel . trxId $ t
+                                suffix = if cRenameFeatures conf
+                                            then BS.empty
+                                            else BS.pack . ('_' :) . regionSpecName . cRegionSpec $ conf
         
 data TranscriptRegion = WholeTrx | Utr5 | Cds | Utr3 deriving (Show, Read, Eq, Ord, Bounded, Enum)
+
+regionName :: TranscriptRegion -> String
+regionName WholeTrx = "trx"
+regionName Utr5 = "utr5"
+regionName Cds = "cds"
+regionName Utr3 = "utr3"
 
 trxRegion :: TranscriptRegion -> Transcript -> Maybe Loc.ContigLoc
 trxRegion WholeTrx trx = let sploc = unOnSeq . location $ trx
@@ -60,6 +73,11 @@ trxRegion Utr3 trx = utr3 trx
 trxRegion Cds trx = cds trx
                          
 data TooLong = TooLongExtend | TooLongTruncate | TooLongDiscard deriving (Show, Read, Eq, Ord, Bounded, Enum)
+
+tooLongName :: TooLong -> String
+tooLongName TooLongExtend = "ext"
+tooLongName TooLongTruncate = "trunc"
+tooLongName TooLongDiscard = "disc"
 
 handleEnds :: TooLong -> Loc.ContigLoc -> Loc.ContigLoc -> Maybe Loc.ContigLoc
 handleEnds TooLongExtend _base cloc = Just cloc
@@ -87,6 +105,21 @@ data RegionSpec = RegionSpec { rsRegion :: !TranscriptRegion
                              , rsTooLong :: !TooLong
                              }
                 deriving (Show)
+
+regionSpecName :: RegionSpec -> String
+regionSpecName (RegionSpec rgn (Just startoff) (Just len) Nothing toolong)
+  = intercalate "_" [ regionName rgn, "start" ++ showSigned startoff, "length" ++ (show . Pos.unOff $ len), tooLongName toolong ]
+regionSpecName (RegionSpec rgn (Just startoff) Nothing (Just endoff) toolong)
+  = intercalate "_" [ regionName rgn, "start" ++ showSigned startoff, "end" ++ show endoff, tooLongName toolong ]
+regionSpecName (RegionSpec rgn Nothing (Just len) (Just endoff) toolong)
+  = intercalate "_" [ regionName rgn, "length" ++ (show . Pos.unOff $ len), "end" ++ show endoff, tooLongName toolong ]
+regionSpecName rs = error $ "regionSpecName: invalid region specification " ++ show rs
+
+showSigned :: Pos.Offset -> String
+showSigned z = case show . Pos.unOff $ z of
+  [] -> []
+  str@('-':_) -> str
+  str -> '+' : str
 
 validRegionSpec :: RegionSpec -> Bool
 validRegionSpec (RegionSpec _rgn (Just _startoff) (Just _len) Nothing        _toolong) = True
@@ -120,14 +153,15 @@ regionSpliceLoc rs _ = error $ "Invalid region selection " ++ show rs
 data Conf = Conf { cInput :: !FilePath
                  , cOutput :: !(Maybe FilePath)
                  , cRegionSpec :: !RegionSpec
+                 , cRenameFeatures :: !Bool
                  }
 
 cOutFile :: Conf -> FilePath
 cOutFile conf = fromMaybe defaultOutput . cOutput $ conf
-  where defaultOutput = (dropExtension . cInput $ conf) ++ "_subregion" ++ (takeExtension . cInput $ conf)
+  where defaultOutput = (dropExtension . cInput $ conf) ++ "_" ++ regionSpecName (cRegionSpec conf) ++ (takeExtension . cInput $ conf)
 
 argConf :: Term Conf
-argConf = Conf <$> argInput <*> argOutput <*> regionspec
+argConf = Conf <$> argInput <*> argOutput <*> regionspec <*> argRename
 
 argInput :: Term FilePath
 argInput = required $ opt Nothing $ ( optInfo [ "i" ])
@@ -184,6 +218,10 @@ regionspec = ret . fmap validate $
                       then return rs
                       else msgFail . PP.text $
                            "Specify exactly two of start offset, length, and end offset"
+
+argRename :: Term Bool
+argRename = value $ opt False $ ( optInfo [ "r", "rename-features" ])
+            { optDoc = "Rename features to describe subregion" }
 
 throwerr :: (MonadBase IO m) => String -> m a
 throwerr = E.ioError . userError
