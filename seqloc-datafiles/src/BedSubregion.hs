@@ -53,9 +53,10 @@ handleTranscripts conf = C.bracketP (openFile (cOutFile conf) WriteMode) hClose 
                           where loc' = (location t) { unOnSeq = sl }
                                 gene' = toSeqLabel . flip BS.append suffix . unSeqLabel . geneId $ t
                                 trx' = toSeqLabel . flip BS.append suffix . unSeqLabel . trxId $ t
-                                suffix = if cRenameFeatures conf
-                                            then BS.empty
-                                            else BS.pack . ('_' :) . regionSpecName . cRegionSpec $ conf
+                                suffix = case cRenameFeatures conf of
+                                  NoRename -> BS.empty
+                                  AutoRename -> BS.pack . ('_' :) . regionSpecName . cRegionSpec $ conf
+                                  Rename sfx -> BS.pack sfx
         
 data TranscriptRegion = WholeTrx | Utr5 | Cds | Utr3 deriving (Show, Read, Eq, Ord, Bounded, Enum)
 
@@ -150,11 +151,17 @@ regionSpliceLoc (RegionSpec rgn Nothing (Just len) (Just endoff) toolong) trx
           else Nothing
 regionSpliceLoc rs _ = error $ "Invalid region selection " ++ show rs
 
+data Rename = NoRename | AutoRename | Rename { unRename :: !String } deriving (Show)
+
+instance ArgVal Rename where
+  converter = let (stringParser, stringPrinter) = converter
+              in (either Left (Right . Rename) . stringParser, stringPrinter . unRename)
+
 data Conf = Conf { cInput :: !FilePath
                  , cOutput :: !(Maybe FilePath)
                  , cRegionSpec :: !RegionSpec
-                 , cRenameFeatures :: !Bool
-                 }
+                 , cRenameFeatures :: !Rename
+                 } deriving (Show)
 
 cOutFile :: Conf -> FilePath
 cOutFile conf = fromMaybe defaultOutput . cOutput $ conf
@@ -219,9 +226,9 @@ regionspec = ret . fmap validate $
                       else msgFail . PP.text $
                            "Specify exactly two of start offset, length, and end offset"
 
-argRename :: Term Bool
-argRename = value $ opt False $ ( optInfo [ "r", "rename-features" ])
-            { optDoc = "Rename features to describe subregion" }
+argRename :: Term Rename
+argRename = value $ defaultOpt AutoRename NoRename $ ( optInfo [ "r", "rename-features" ])
+            { optName = "SUFFIX", optDoc = "Rename features to describe subregion [defaults to systematic name based on region specifier]" }
 
 throwerr :: (MonadBase IO m) => String -> m a
 throwerr = E.ioError . userError
