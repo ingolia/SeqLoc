@@ -4,7 +4,7 @@
 module Bio.SeqLoc.Bed
        ( readBedTranscripts
        , bedZP, bedTranscriptEnum
-       , bedConduit
+       , bedConduit, unbedConduit
        , transcriptToBed, transcriptToBedStd
        )
        where
@@ -92,6 +92,10 @@ bedConduit = CB.lines C.$= loop
                (\l -> case ZP.parse bedZP l of
                    Left err -> E.ioError . userError $ err ++ "\n  in BED line\n"  ++ show l
                    Right res -> C.yield res >> loop)
+
+unbedConduit :: (Monad m) => C.Conduit Transcript m BS.ByteString
+unbedConduit = C.head >>= maybe (return ()) go
+  where go t = C.yield (transcriptToBedStd t `BS.append` "\n") >> unbedConduit
 
 -- | Minimalistic 'ZP.Parser'-style parser for a BED format line, not
 -- including the trailing newline.
