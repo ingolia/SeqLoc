@@ -85,7 +85,7 @@ handleEnds TooLongExtend _base cloc = Just cloc
 handleEnds TooLongTruncate base cloc = let start = max (Pos.offset . Loc.startPos $ base) (Pos.offset . Loc.startPos $ cloc)
                                            end = min (Pos.offset . Loc.endPos $ base) (Pos.offset . Loc.endPos $ cloc)
                                        in if start < end
-                                          then Just $! Loc.fromStartEnd start end
+                                          then Just $! Loc.fromBoundsStrand start end Plus
                                           else Nothing
 handleEnds TooLongDiscard base cloc = if ((Pos.offset . Loc.startPos $ base) <= (Pos.offset . Loc.startPos $ cloc)
                                           && (Pos.offset . Loc.endPos $ base) >= (Pos.offset . Loc.endPos $ cloc))
@@ -138,7 +138,7 @@ regionSpliceLoc (RegionSpec rgn (Just startoff) Nothing (Just endoff) toolong) t
        let start = (Pos.offset . Loc.startPos $ base) + startoff
            end = (Pos.offset . Loc.endPos $ base) + endoff
        if start <= end
-          then do cloc <- handleEnds toolong base $ Loc.fromStartEnd start end
+          then do cloc <- handleEnds toolong base $ Loc.fromBoundsStrand start end Plus
                   return $! clocOutofExtended cloc (unOnSeq . location $ trx)
           else Nothing
 regionSpliceLoc (RegionSpec rgn Nothing (Just len) (Just endoff) toolong) trx
@@ -146,7 +146,7 @@ regionSpliceLoc (RegionSpec rgn Nothing (Just len) (Just endoff) toolong) trx
        let end = (Pos.offset . Loc.endPos $ base) + endoff
            start = 1 + end - len
        if start <= end
-          then do cloc <- handleEnds toolong base $ Loc.fromStartEnd start end
+          then do cloc <- handleEnds toolong base $ Loc.fromBoundsStrand start end Plus
                   return $! clocOutofExtended cloc (unOnSeq . location $ trx)
           else Nothing
 regionSpliceLoc rs _ = error $ "Invalid region selection " ++ show rs
