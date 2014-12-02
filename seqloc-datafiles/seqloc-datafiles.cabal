@@ -123,6 +123,6 @@ Test-Suite test-subregions
   Build-depends:       base >= 4.2 && < 5, bytestring, attoparsec >= 0.8.5,
                        QuickCheck, random, biocore >= 0.2, unordered-containers, vector, hashable,
                        seqloc >= 0.5, lifted-base, transformers-base, conduit, conduit-extra,
-                       iteratee
+                       iteratee, directory, process, transformers
   Hs-Source-Dirs:      src, test
   Default-Language:    Haskell2010
