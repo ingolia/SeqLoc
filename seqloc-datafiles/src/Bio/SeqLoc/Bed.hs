@@ -162,7 +162,13 @@ bedCdsLoc loc thickStart thickEnd
   = maybe badCdsLoc return $ do
     relstart <- Loc.posInto (Pos.Pos thickStart Plus) loc
     relend <- Loc.posInto (Pos.Pos (thickEnd - 1) Plus) loc
-    return $! stranded (Loc.strand loc) $ Loc.fromStartEnd (Pos.offset relstart) (Pos.offset relend)
+    case Loc.strand loc of
+      Plus -> if relstart <= relend
+                 then return $! Loc.fromBoundsStrand (Pos.offset relstart) (Pos.offset relend) Plus
+                 else Nothing
+      Minus -> if relend <= relstart
+                  then return $! Loc.fromBoundsStrand (Pos.offset relend) (Pos.offset relstart) Plus
+                  else Nothing
       where badCdsLoc = fail $ "Bio.SeqLoc.Bed: bad cds in " ++ 
                         (BS.unpack . BS.unwords $ [ repr loc, repr thickStart, repr thickEnd ])
 
