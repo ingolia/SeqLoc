@@ -31,6 +31,13 @@ main = mapM_ runTest tests
 tests :: [Test]
 tests = [ T "Write random bed"          test_writeRandomBed
         , T "Whole transcript"          test_wholeTranscript
+        , T "CDS only"                  test_CDS
+        , T "CDS start & length"        test_CDS_start_length
+        , T "Trx start & length"        test_trx_start_length
+        , T "Trx start & end"           test_trx_start_end
+        , T "Trx end & length"          test_trx_end_length
+        , T "Truncate start"            test_truncate_start
+        , T "Truncate end"              test_truncate_end
         ]
 
 test_writeRandomBed :: Property
@@ -41,6 +48,79 @@ test_writeRandomBed = monadicIO $
 test_wholeTranscript :: Property
 test_wholeTranscript = test_subtranscript (Just . stripCDS) [ "--whole-trx", "--discard", "--start=0", "--end=0" ]
   where stripCDS t = t { cds = Nothing }
+
+test_CDS :: Property
+test_CDS = test_subtranscript subcds [ "--cds", "--discard", "--start=0", "--end=0" ]
+  where subcds t = let (OnSeq chr loc) = location t
+                   in do subloc <- cds t >>= \cdsloc -> Loc.clocOutof cdsloc loc
+                         return $! t { location = (OnSeq chr subloc), cds = Nothing }
+
+test_CDS_start_length :: Property
+test_CDS_start_length = forAll genNonNegOffset $ \substart ->
+  forAll genPositiveOffset $ \sublen ->
+  let subcdslen t = let (OnSeq chr loc) = location t
+                        subsubloc = Loc.fromPosLen (Pos.Pos substart Plus) sublen
+                    in do subcdsloc <- cds t >>= Loc.clocOutof subsubloc
+                          subloc <- Loc.clocOutof subcdsloc loc
+                          return $! t { location = (OnSeq chr subloc), cds = Nothing }
+  in test_subtranscript subcdslen [ "--cds", "--discard", "--start=" ++ show (Pos.unOff substart), "--length=" ++ show (Pos.unOff sublen) ]
+
+test_trx_start_length :: Property
+test_trx_start_length = forAll genNonNegOffset $ \substart ->
+  forAll genPositiveOffset $ \sublen ->
+  let subtrx t = let (OnSeq chr loc) = location t
+                     subsubloc = Loc.fromBoundsStrand substart (substart + sublen - 1) Plus
+                 in do subloc <- Loc.clocOutof subsubloc loc
+                       return $! t { location = (OnSeq chr subloc), cds = Nothing }
+  in test_subtranscript subtrx [ "--whole-trx", "--discard", "--start=" ++ show (Pos.unOff substart), "--length=" ++ show (Pos.unOff sublen) ]
+
+test_trx_end_length :: Property
+test_trx_end_length = forAll genNonNegOffset $ \subend ->
+  forAll genPositiveOffset $ \sublen ->
+  let subtrxlen t = let (OnSeq chr loc) = location t
+                        trxlen = Loc.length loc
+                        subsubloc = Loc.fromBoundsStrand (trxlen - (subend + sublen)) (trxlen - (subend + 1)) Plus
+                    in do subloc <- Loc.clocOutof subsubloc loc
+                          return $! t { location = (OnSeq chr subloc), cds = Nothing }
+  in test_subtranscript subtrxlen [ "--whole-trx", "--discard", "--end=" ++ show (negate $ Pos.unOff subend), "--length=" ++ show (Pos.unOff sublen) ]
+
+test_trx_start_end :: Property
+test_trx_start_end = forAll genNonNegOffset $ \substart ->
+  forAll genNonNegOffset $ \subend ->
+  let subtrxlen t = let (OnSeq chr loc) = location t
+                        trxlen = Loc.length loc
+                    in do subsubloc <- if substart <= (trxlen - (subend + 1))
+                                       then Just $! Loc.fromBoundsStrand substart (trxlen - (subend + 1)) Plus
+                                       else Nothing
+                          subloc <- Loc.clocOutof subsubloc loc
+                          return $! t { location = (OnSeq chr subloc), cds = Nothing }
+  in test_subtranscript subtrxlen [ "--whole-trx", "--discard", "--start=" ++ show (Pos.unOff substart), "--end=" ++ show (negate $ Pos.unOff subend) ]
+
+test_truncate_start :: Property
+test_truncate_start = forAll genNonNegOffset $ \inlen ->
+  forAll genNonNegOffset $ \outlen ->
+  let subtrx t = let (OnSeq chr loc) = location t
+                     trxlen = Loc.length loc
+                     efflen = min inlen trxlen
+                 in do subsubloc <- if efflen > 0
+                                    then Just $! Loc.fromBoundsStrand 0 (efflen - 1) Plus
+                                    else Nothing
+                       subloc <- Loc.clocOutof subsubloc loc
+                       return $! t { location = (OnSeq chr subloc), cds = Nothing }
+  in test_subtranscript subtrx [ "--whole-trx", "--truncate", "--start=" ++ show (negate $ Pos.unOff outlen), "--length=" ++ show (Pos.unOff $ inlen + outlen) ]
+
+test_truncate_end :: Property
+test_truncate_end = forAll genNonNegOffset $ \inlen ->
+  forAll genNonNegOffset $ \outlen ->
+  let subtrx t = let (OnSeq chr loc) = location t
+                     trxlen = Loc.length loc
+                     efflen = min inlen trxlen
+                 in do subsubloc <- if efflen > 0
+                                    then Just $! Loc.fromBoundsStrand (trxlen - efflen) (trxlen - 1) Plus
+                                    else Nothing
+                       subloc <- Loc.clocOutof subsubloc loc
+                       return $! t { location = (OnSeq chr subloc), cds = Nothing }
+  in test_subtranscript subtrx [ "--whole-trx", "--truncate", "--end=" ++ show (Pos.unOff outlen), "--length=" ++ show (Pos.unOff $ inlen + outlen) ]
 
 test_subtranscript :: (Transcript -> Maybe Transcript) -> [String] -> Property
 test_subtranscript subtrx args = monadicIO $
@@ -116,8 +196,8 @@ genTranscript = do gene <- arbitrary
                      if hascds
                         then let len = fromIntegral . Loc.length . unOnSeq $ seqloc
                              in do s <- Pos.Offset <$> choose (0, len - 1)
-                                   e <- Pos.Offset <$> choose (fromIntegral s, len - 1)
-                                   return . Just $! Loc.fromStartEnd s e
+                                   e <- Pos.Offset <$> choose (fromIntegral s + 1, len - 1)
+                                   return . Just $! Loc.fromBoundsStrand s e Plus
                         else return Nothing
                    return $! Transcript { geneId = gene, trxId = trx, location = seqloc, cds = cds }
 
