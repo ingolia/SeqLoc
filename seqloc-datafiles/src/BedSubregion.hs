@@ -84,7 +84,7 @@ handleEnds :: TooLong -> Loc.ContigLoc -> Loc.ContigLoc -> Maybe Loc.ContigLoc
 handleEnds TooLongExtend _base cloc = Just cloc
 handleEnds TooLongTruncate base cloc = let start = max (Pos.offset . Loc.startPos $ base) (Pos.offset . Loc.startPos $ cloc)
                                            end = min (Pos.offset . Loc.endPos $ base) (Pos.offset . Loc.endPos $ cloc)
-                                       in if start < end
+                                       in if start <= end
                                           then Just $! Loc.fromBoundsStrand start end Plus
                                           else Nothing
 handleEnds TooLongDiscard base cloc = if ((Pos.offset . Loc.startPos $ base) <= (Pos.offset . Loc.startPos $ cloc)
