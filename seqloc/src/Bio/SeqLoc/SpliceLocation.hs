@@ -11,7 +11,7 @@ no strand.
 module Bio.SeqLoc.SpliceLocation ( 
   -- * Sequence locations
   SpliceLoc
-  , fromContigs
+  , fromContigs, singleton
   , locOutof, locInto
   , mergeContigs, mergeAdjContigs
   ) where 

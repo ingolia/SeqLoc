@@ -2,6 +2,7 @@
 module Main
     where
 
+import Control.Applicative
 import Control.Monad
 import qualified Data.ByteString as BSW
 import qualified Data.ByteString.Char8 as BS
@@ -43,6 +44,8 @@ tests = [ T "Strand revCompl"               test_Strand_revCompl
         , T "LocMap hit inside only"        property_LocMap_hitIn
         , T "LocMap hit all"                property_LocMap_hitAll
         , T "LocMap hit multi"              property_LocMap_hitMulti
+
+        , T "Locatable hit within"          property_Locatable_hitWithin
           
         , T "Pos revCompl"                  test_Pos_revCompl
         , T "Pos atPos"                     property_Pos_atPos
@@ -460,10 +463,30 @@ property_LocMap_hitMulti ca cb cc pos =
       hita = ca `elem` LM.queryLoc ploc lm
       hitb = cb `elem` LM.queryLoc ploc lm
       hitc = cc `elem` LM.queryLoc ploc lm
-  in collect (hita, hitb, hitc) $
-     and [ hita || not isina,
+  in and [ hita || not isina,
            hitb || not isinb,
            hitc || not isinc ]
+
+property_Locatable_hitWithin :: Loc.ContigLoc -> Loc.ContigLoc -> Pos.Pos -> Property
+property_Locatable_hitWithin ca cb pos =
+  forAll genPositiveOffset $ \binsz ->
+  forAll genName $ \chr ->
+  let isina = isJust $ Loc.posInto pos ca
+      isinb = isJust $ Loc.posInto pos cb
+      ploc = OnSeq chr $ Loc.fromPosLen pos 1
+      la = LM.WithLocation ca (OnSeq chr (SpLoc.singleton ca))
+      lb = LM.WithLocation cb (OnSeq chr (SpLoc.singleton cb))
+      lm = LM.locatableSeqLocMap binsz [ la, lb ]
+      hita = la `elem` LM.queryLocatable Nothing ploc lm
+      hitb = lb `elem` LM.queryLocatable Nothing ploc lm
+      hita' = la `elem` LM.querySeqLoc ploc lm
+      hitb' = lb `elem` LM.querySeqLoc ploc lm
+  in and [ hita == isina, hita' || not isina
+         , hitb == isinb, hitb' || not isinb
+         ]
+
+instance (Arbitrary a) => Arbitrary (OnSeq a) where
+  arbitrary = OnSeq <$> arbitrary <*> arbitrary
 
 -- Utilities
 
