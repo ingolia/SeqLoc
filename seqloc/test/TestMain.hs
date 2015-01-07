@@ -45,7 +45,9 @@ tests = [ T "Strand revCompl"               test_Strand_revCompl
         , T "LocMap hit all"                property_LocMap_hitAll
         , T "LocMap hit multi"              property_LocMap_hitMulti
 
-        , T "Locatable hit within"          property_Locatable_hitWithin
+        , T "Locatable hit Contig"          property_Locatable_hitContig
+        , T "Locatable hit Contig Extended" property_Locatable_locHitContig
+        , T "Locatable hit Spliced"         property_Locatable_hitSpliced
           
         , T "Pos revCompl"                  test_Pos_revCompl
         , T "Pos atPos"                     property_Pos_atPos
@@ -448,7 +450,7 @@ property_LocMap_hitAll contig pos =
       ploc = Loc.fromPosLen pos 1
       lm = LM.insertLoc contig contig (LM.emptyLM binsz)
       ishit = not $ null (LM.queryLoc ploc lm)
-  in collect ishit $ ishit || not isin
+  in ishit || not isin
 
 property_LocMap_hitMulti :: Loc.ContigLoc -> Loc.ContigLoc -> Loc.ContigLoc -> Pos.Pos -> Property
 property_LocMap_hitMulti ca cb cc pos =
@@ -467,23 +469,58 @@ property_LocMap_hitMulti ca cb cc pos =
            hitb || not isinb,
            hitc || not isinc ]
 
-property_Locatable_hitWithin :: Loc.ContigLoc -> Loc.ContigLoc -> Pos.Pos -> Property
-property_Locatable_hitWithin ca cb pos =
+property_Locatable_hitContig :: [Loc.ContigLoc] -> Pos.Pos -> Property
+property_Locatable_hitContig cs pos =
   forAll genPositiveOffset $ \binsz ->
   forAll genName $ \chr ->
-  let isina = isJust $ Loc.posInto pos ca
-      isinb = isJust $ Loc.posInto pos cb
+  let isins = map (isJust . Loc.posInto pos) cs
       ploc = OnSeq chr $ Loc.fromPosLen pos 1
-      la = LM.WithLocation ca (OnSeq chr (SpLoc.singleton ca))
-      lb = LM.WithLocation cb (OnSeq chr (SpLoc.singleton cb))
-      lm = LM.locatableSeqLocMap binsz [ la, lb ]
-      hita = la `elem` LM.queryLocatable Nothing ploc lm
-      hitb = lb `elem` LM.queryLocatable Nothing ploc lm
-      hita' = la `elem` LM.querySeqLoc ploc lm
-      hitb' = lb `elem` LM.querySeqLoc ploc lm
-  in and [ hita == isina, hita' || not isina
-         , hitb == isinb, hitb' || not isinb
-         ]
+      seqlocs = map ((OnSeq chr) . SpLoc.singleton) cs
+      locables = [ LM.WithLocation sl sl | sl <- seqlocs ]
+      slm = LM.locatableSeqLocMap binsz locables
+      binhits = map (\l -> l `elem` LM.querySeqLoc ploc slm) locables
+      hits = map (\l -> l `elem` LM.queryLocatable Nothing ploc slm) locables
+  in and $ concat [ zipWith (\isin binhit -> binhit || not isin) isins binhits
+                  , zipWith (\isin hit -> hit == isin) isins hits
+                  ]
+
+property_Locatable_locHitContig :: [Loc.ContigLoc] -> Loc.ContigLoc -> Property
+property_Locatable_locHitContig cs qy =
+  forAll genPositiveOffset $ \binsz ->
+  forAll genName $ \chr ->
+  let isInFwds = map (Loc.overlaps qy) cs
+      isInRevs = map (Loc.overlaps (revCompl qy)) cs
+      isIns = zipWith (||) isInFwds isInRevs
+      qyseqloc = OnSeq chr qy
+      seqlocs = map ((OnSeq chr) . SpLoc.singleton) cs
+      locables = [ LM.WithLocation sl sl | sl <- seqlocs ]
+      slm = LM.locatableSeqLocMap binsz locables
+      binhits = map (\l -> l `elem` LM.querySeqLoc qyseqloc slm) locables
+      fwdHits = map (\l -> l `elem` LM.queryLocatable (Just Plus) qyseqloc slm) locables
+      revHits = map (\l -> l `elem` LM.queryLocatable (Just Minus) qyseqloc slm) locables
+      allHits = zipWith (||) fwdHits revHits
+  in and $ concat [ zipWith (\isin binhit -> binhit || not isin) isIns binhits
+                  , zipWith (\isin hit -> hit == isin) isInFwds fwdHits
+                  , zipWith (\isin hit -> hit == isin) isInRevs revHits
+                  , zipWith (\isin hit -> hit == isin) isIns allHits
+                  ]
+
+property_Locatable_hitSpliced :: [SpLoc.SpliceLoc] -> Pos.Pos -> Property
+property_Locatable_hitSpliced cs pos =
+  forAll genPositiveOffset $ \binsz ->
+  forAll genName $ \chr ->
+  let isins = map (isJust . Loc.posInto pos) cs
+      ploc = OnSeq chr . SpLoc.singleton $ Loc.fromPosLen pos 1
+      seqlocs = map (OnSeq chr) cs
+      locables = [ LM.WithLocation sl sl | sl <- seqlocs ]
+      slm = LM.locatableSeqLocMap binsz locables
+      binhits = map (\l -> l `elem` LM.querySeqLoc ploc slm) locables
+      hits = map (\l -> l `elem` LM.queryLocatable Nothing ploc slm) locables
+      compats = map (\l -> l `elem` LM.queryLocCompatible Nothing ploc slm) locables
+  in and $ concat [ zipWith (\isin binhit -> binhit || not isin) isins binhits
+                  , zipWith (\isin hit -> hit || not isin) isins hits
+                  , zipWith (\isin compat -> isin == compat) isins compats
+                  ]
 
 instance (Arbitrary a) => Arbitrary (OnSeq a) where
   arbitrary = OnSeq <$> arbitrary <*> arbitrary

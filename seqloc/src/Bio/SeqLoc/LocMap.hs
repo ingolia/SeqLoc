@@ -145,10 +145,12 @@ locatableSeqLocMap bsz = foldl' insertLocable (emptySLM bsz)
   where insertLocable slm0 t = insertSeqLoc (locate t) t slm0
 
 -- | Retrieve a list of `Locatable` objects whose overall, contiguous
--- genomic coordinates contain the genomic interval spanned by the
--- specified `Loc.Location`. This does not require that the spliced
--- structure of the query is a subset of the spliced structure of the
--- `Locatable` (contrast with `queryLocCompatible`).
+-- genomic coordinates intersect at any position the genomic interval
+-- spanned by the specified `Loc.Location`. This does not require that
+-- the spliced structure of the query is a subset of the spliced
+-- structure of the `Locatable` nor that the query location lie
+-- entirely within the hit location (contrast with
+-- `queryLocCompatible`).
 --
 -- When a strand argument is given, restrict matches to those lying on
 -- the same strand as the query location, for `Just Plus`, or the
