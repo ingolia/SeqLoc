@@ -1,5 +1,5 @@
 Name:                seqloc
-Version:             0.6
+Version:             0.6.1
 Cabal-Version:       >= 1.14
 Synopsis:            Handle sequence locations for bioinformatics
 Description:         Handle sequence locations for bioinformatics
