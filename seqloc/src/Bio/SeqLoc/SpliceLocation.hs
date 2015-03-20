@@ -11,8 +11,8 @@ no strand.
 module Bio.SeqLoc.SpliceLocation ( 
   -- * Sequence locations
   SpliceLoc
-  , fromContigs
-  , locOutof, locInto
+  , fromContigs, singleton
+  , locOutof, locInto, contigSpan
   , mergeContigs, mergeAdjContigs
   ) where 
 
@@ -104,6 +104,11 @@ locOutof sploc outer = mapM (flip clocOutof outer) (toContigs sploc) >>=
 locInto :: (Location l) => SpliceLoc -> l -> Maybe SpliceLoc
 locInto sploc outer = mapM (flip clocInto outer) (toContigs sploc) >>=
                       fromContigs . mergeContigs . concat . map toContigs
+
+-- | Return the contiguous location spanned by the spliced location.
+contigSpan :: SpliceLoc -> ContigLoc
+contigSpan sl = let (start, end) = bounds sl
+                in fromBoundsStrand start end (strand sl)
 
 mergeContigs :: [ContigLoc] -> [ContigLoc]
 mergeContigs [] = []

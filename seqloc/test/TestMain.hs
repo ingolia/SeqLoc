@@ -2,6 +2,7 @@
 module Main
     where
 
+import Control.Applicative
 import Control.Monad
 import qualified Data.ByteString as BSW
 import qualified Data.ByteString.Char8 as BS
@@ -43,6 +44,13 @@ tests = [ T "Strand revCompl"               test_Strand_revCompl
         , T "LocMap hit inside only"        property_LocMap_hitIn
         , T "LocMap hit all"                property_LocMap_hitAll
         , T "LocMap hit multi"              property_LocMap_hitMulti
+
+        , T "Locatable hit Contig"           property_Locatable_hitContig
+        , T "Locatable hit Spliced"          property_Locatable_hitSpliced
+        , T "Locatable hit Contig Extended"  property_Locatable_locHitContig
+        , T "Locatable hit Spliced Extended" property_Locatable_locHitSpliced
+        , T "Locatable compat Contig Ext'd"  property_Locatable_locCompatContig
+        , T "Locatable compat Spliced Ext'd" property_Locatable_locCompatSpliced
           
         , T "Pos revCompl"                  test_Pos_revCompl
         , T "Pos atPos"                     property_Pos_atPos
@@ -445,7 +453,7 @@ property_LocMap_hitAll contig pos =
       ploc = Loc.fromPosLen pos 1
       lm = LM.insertLoc contig contig (LM.emptyLM binsz)
       ishit = not $ null (LM.queryLoc ploc lm)
-  in collect ishit $ ishit || not isin
+  in ishit || not isin
 
 property_LocMap_hitMulti :: Loc.ContigLoc -> Loc.ContigLoc -> Loc.ContigLoc -> Pos.Pos -> Property
 property_LocMap_hitMulti ca cb cc pos =
@@ -460,10 +468,128 @@ property_LocMap_hitMulti ca cb cc pos =
       hita = ca `elem` LM.queryLoc ploc lm
       hitb = cb `elem` LM.queryLoc ploc lm
       hitc = cc `elem` LM.queryLoc ploc lm
-  in collect (hita, hitb, hitc) $
-     and [ hita || not isina,
+  in and [ hita || not isina,
            hitb || not isinb,
            hitc || not isinc ]
+
+property_Locatable_hitContig :: [Loc.ContigLoc] -> Pos.Pos -> Property
+property_Locatable_hitContig cs pos =
+  forAll genPositiveOffset $ \binsz ->
+  forAll genName $ \chr ->
+  let isins = map (isJust . Loc.posInto pos) cs
+      ploc = OnSeq chr $ Loc.fromPosLen pos 1
+      seqlocs = map ((OnSeq chr) . SpLoc.singleton) cs
+      locables = [ LM.WithLocation sl sl | sl <- seqlocs ]
+      slm = LM.locatableSeqLocMap binsz locables
+      binhits = map (\l -> l `elem` LM.querySeqLoc ploc slm) locables
+      hits = map (\l -> l `elem` LM.queryLocatable Nothing ploc slm) locables
+  in and $ concat [ zipWith (\isin binhit -> binhit || not isin) isins binhits
+                  , zipWith (\isin hit -> hit == isin) isins hits
+                  ]
+
+property_Locatable_hitSpliced :: [SpLoc.SpliceLoc] -> Pos.Pos -> Property
+property_Locatable_hitSpliced cs pos =
+  forAll genPositiveOffset $ \binsz ->
+  forAll genName $ \chr ->
+  let isins = map (isJust . Loc.posInto pos) cs
+      ploc = OnSeq chr . SpLoc.singleton $ Loc.fromPosLen pos 1
+      seqlocs = map (OnSeq chr) cs
+      locables = [ LM.WithLocation sl sl | sl <- seqlocs ]
+      slm = LM.locatableSeqLocMap binsz locables
+      binhits = map (\l -> l `elem` LM.querySeqLoc ploc slm) locables
+      hits = map (\l -> l `elem` LM.queryLocatable Nothing ploc slm) locables
+      compats = map (\l -> l `elem` LM.queryLocCompatible Nothing ploc slm) locables
+  in and $ concat [ zipWith (\isin binhit -> binhit || not isin) isins binhits
+                  , zipWith (\isin hit -> hit || not isin) isins hits
+                  , zipWith (\isin compat -> isin == compat) isins compats
+                  ]
+
+property_Locatable_locHitContig :: [Loc.ContigLoc] -> Loc.ContigLoc -> Property
+property_Locatable_locHitContig cs qy =
+  forAll genPositiveOffset $ \binsz ->
+  forAll genName $ \chr ->
+  let isInFwds = map (Loc.overlaps qy) cs
+      isInRevs = map (Loc.overlaps (revCompl qy)) cs
+      isIns = zipWith (||) isInFwds isInRevs
+      qyseqloc = OnSeq chr qy
+      seqlocs = map ((OnSeq chr) . SpLoc.singleton) cs
+      locables = [ LM.WithLocation sl sl | sl <- seqlocs ]
+      slm = LM.locatableSeqLocMap binsz locables
+      binhits = map (\l -> l `elem` LM.querySeqLoc qyseqloc slm) locables
+      fwdHits = map (\l -> l `elem` LM.queryLocatable (Just Plus) qyseqloc slm) locables
+      revHits = map (\l -> l `elem` LM.queryLocatable (Just Minus) qyseqloc slm) locables
+      allHits = zipWith (||) fwdHits revHits
+  in and $ concat [ zipWith (\isin binhit -> binhit || not isin) isIns binhits
+                  , zipWith (\isin hit -> hit == isin) isInFwds fwdHits
+                  , zipWith (\isin hit -> hit == isin) isInRevs revHits
+                  , zipWith (\isin hit -> hit == isin) isIns allHits
+                  ]
+
+property_Locatable_locHitSpliced :: [SpLoc.SpliceLoc] -> Loc.ContigLoc -> Property
+property_Locatable_locHitSpliced ls qy =
+  forAll genPositiveOffset $ \binsz ->
+  forAll genName $ \chr ->
+  let isInFwds = map (Loc.overlaps qy . SpLoc.contigSpan) ls
+      isInRevs = map (Loc.overlaps (revCompl qy) . SpLoc.contigSpan) ls
+      isIns = zipWith (||) isInFwds isInRevs
+      qyseqloc = OnSeq chr qy
+      seqlocs = map (OnSeq chr) ls
+      locables = [ LM.WithLocation sl sl | sl <- seqlocs ]
+      slm = LM.locatableSeqLocMap binsz locables
+      binhits = map (\l -> l `elem` LM.querySeqLoc qyseqloc slm) locables
+      fwdHits = map (\l -> l `elem` LM.queryLocatable (Just Plus) qyseqloc slm) locables
+      revHits = map (\l -> l `elem` LM.queryLocatable (Just Minus) qyseqloc slm) locables
+      allHits = zipWith (||) fwdHits revHits
+  in and $ concat [ zipWith (\isin binhit -> binhit || not isin) isIns binhits
+                  , zipWith (\isin hit -> hit == isin) isInFwds fwdHits
+                  , zipWith (\isin hit -> hit == isin) isInRevs revHits
+                  , zipWith (\isin hit -> hit == isin) isIns allHits
+                  ]
+
+property_Locatable_locCompatContig :: [Loc.ContigLoc] -> Loc.ContigLoc -> Property
+property_Locatable_locCompatContig cs qy =
+  forAll genPositiveOffset $ \binsz ->
+  forAll genName $ \chr ->
+  let isInFwds = map ((== (Just Plus)) . liftM Loc.strand . Loc.clocInto qy) cs
+      isInRevs = map ((== (Just Minus)) . liftM Loc.strand . Loc.clocInto qy) cs
+      isIns = zipWith (||) isInFwds isInRevs
+      qyseqloc = OnSeq chr (SpLoc.singleton qy)
+      seqlocs = map ((OnSeq chr) . SpLoc.singleton) cs
+      locables = [ LM.WithLocation sl sl | sl <- seqlocs ]
+      slm = LM.locatableSeqLocMap binsz locables
+      binhits = map (\l -> l `elem` LM.querySeqLoc qyseqloc slm) locables
+      fwdHits = map (\l -> l `elem` LM.queryLocCompatible (Just Plus) qyseqloc slm) locables
+      revHits = map (\l -> l `elem` LM.queryLocCompatible (Just Minus) qyseqloc slm) locables
+      allHits = zipWith (||) fwdHits revHits
+  in and $ concat [ zipWith (\isin binhit -> binhit || not isin) isIns binhits
+                  , zipWith (\isin hit -> hit == isin) isInFwds fwdHits
+                  , zipWith (\isin hit -> hit == isin) isInRevs revHits
+                  , zipWith (\isin hit -> hit == isin) isIns allHits
+                  ]
+
+property_Locatable_locCompatSpliced :: [SpLoc.SpliceLoc] -> Loc.ContigLoc -> Property
+property_Locatable_locCompatSpliced ls qy =
+  forAll genPositiveOffset $ \binsz ->
+  forAll genName $ \chr ->
+  let isInFwds = map ((== (Just Plus)) . liftM Loc.strand . Loc.clocInto qy) ls
+      isInRevs = map ((== (Just Minus)) . liftM Loc.strand . Loc.clocInto qy) ls
+      isIns = zipWith (||) isInFwds isInRevs
+      qyseqloc = OnSeq chr (SpLoc.singleton qy)
+      seqlocs = map (OnSeq chr) ls
+      locables = [ LM.WithLocation sl sl | sl <- seqlocs ]
+      slm = LM.locatableSeqLocMap binsz locables
+      binhits = map (\l -> l `elem` LM.querySeqLoc qyseqloc slm) locables
+      fwdHits = map (\l -> l `elem` LM.queryLocCompatible (Just Plus) qyseqloc slm) locables
+      revHits = map (\l -> l `elem` LM.queryLocCompatible (Just Minus) qyseqloc slm) locables
+      allHits = zipWith (||) fwdHits revHits
+  in and $ concat [ zipWith (\isin binhit -> binhit || not isin) isIns binhits
+                  , zipWith (\isin hit -> hit == isin) isInFwds fwdHits
+                  , zipWith (\isin hit -> hit == isin) isInRevs revHits
+                  , zipWith (\isin hit -> hit == isin) isIns allHits
+                  ]
+
+instance (Arbitrary a) => Arbitrary (OnSeq a) where
+  arbitrary = OnSeq <$> arbitrary <*> arbitrary
 
 -- Utilities
 
