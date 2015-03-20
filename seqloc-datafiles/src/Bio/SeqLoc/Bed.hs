@@ -13,6 +13,7 @@ import Control.Applicative
 import qualified Control.Exception.Lifted as E
 import Control.Monad
 import Control.Monad.Base
+import Control.Monad.Trans.Resource
 import qualified Data.ByteString.Char8 as BS
 import Data.List
 import Data.Maybe
@@ -72,8 +73,9 @@ transcriptToBed score rgb trx = unfields fields
 
 -- | Read all BED format annotations in a BED file
 readBedTranscripts :: FilePath -> IO [Transcript]
-readBedTranscripts = Iter.fileDriver (bedTranscriptEnum Iter.stream2list)
-                     
+readBedTranscripts bedfile = runResourceT $ C.runConduit $
+                             CB.sourceFile bedfile C.$= bedConduit C.$= C.consume
+                      
 -- | Iteratee to convert an 'Iter.Iteratee' over a 'BS.ByteString',
 -- such as the standard 'Iter.fileDriver', into an iteratee over a
 -- list of 'Transcript' annotations from the file.
