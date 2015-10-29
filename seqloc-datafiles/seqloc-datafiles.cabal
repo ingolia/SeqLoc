@@ -23,7 +23,7 @@ Library
                        attoparsec >= 0.8.5, hashable, unordered-containers,
                        lifted-base >= 0.2.3, transformers-base >= 0.4.3,
                        iteratee >= 0.8.1, seqloc >= 0.3.1, biocore >= 0.2,
-                       conduit, conduit-extra, resourcet
+                       conduit, conduit-extra, resourcet, vector >= 0.10
   Hs-Source-Dirs:      src
   Ghc-options:         -Wall
   Default-Language:    Haskell2010
@@ -34,7 +34,7 @@ Executable gtf-to-bed
   Build-depends:       base >= 4.2 && < 5, bytestring,
                        attoparsec >= 0.8.5, hashable, unordered-containers,
                        iteratee >= 0.8.1, seqloc >= 0.3.1, biocore >= 0.2, transformers, monads-tf,
-                       lifted-base, transformers-base, conduit, conduit-extra, resourcet
+                       lifted-base, transformers-base, conduit, conduit-extra, resourcet, vector >= 0.10
   Hs-Source-Dirs:      src
   Ghc-options:         -Wall -rtsopts
   C-Sources:           src/rtsopts.c
@@ -46,7 +46,7 @@ Executable bed-to-gtf
   Build-depends:       base >= 4.2 && < 5, bytestring,
                        attoparsec >= 0.8.5, hashable, unordered-containers,
                        iteratee >= 0.8.1, seqloc >= 0.3.1, biocore >= 0.2, transformers, monads-tf,
-                       conduit, conduit-extra, lifted-base, transformers-base, resourcet
+                       conduit, conduit-extra, lifted-base, transformers-base, resourcet, vector >= 0.10
   Hs-Source-Dirs:      src
   Ghc-options:         -Wall -rtsopts
   C-Sources:           src/rtsopts.c
@@ -57,7 +57,7 @@ Executable gtf-introns
   Other-modules:       Bio.SeqLoc.GTF, Bio.SeqLoc.TranscriptTable, Bio.SeqLoc.ZeptoUtils
   Build-depends:       base >= 4.2 && < 5, bytestring,
                        attoparsec >= 0.8.5, hashable, unordered-containers,
-                       iteratee >= 0.8.1, seqloc >= 0.3.1, biocore >= 0.2,
+                       iteratee >= 0.8.1, seqloc >= 0.3.1, biocore >= 0.2, vector >= 0.10,
                        QuickCheck, random, cmdtheline,
                        conduit, conduit-extra, resourcet
   Hs-Source-Dirs:      src, test

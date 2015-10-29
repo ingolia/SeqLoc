@@ -12,14 +12,18 @@ import Control.Applicative
 import Control.Monad
 import qualified Data.ByteString.Char8 as BS
 import Data.ByteString.Internal (c2w)
+import Data.Char
 import Data.List
 import Data.Maybe
 
 import qualified Data.Attoparsec.Char8 as AP (isSpace_w8)
 import qualified Data.Attoparsec.Zepto as ZP
+import qualified Data.Conduit as C
+import qualified Data.Conduit.List as C
 import qualified Data.HashMap.Strict as HM
 import qualified Data.Iteratee as Iter
 import qualified Data.Iteratee.Char as IterChar
+import qualified Data.Vector as V
 
 import Bio.SeqLoc.LocRepr
 import qualified Bio.SeqLoc.Location as Loc
@@ -159,6 +163,7 @@ data GtfLine = GtfLine { gtfGene, gtfTrx, gtfFtype :: !BS.ByteString, gtfLoc :: 
 data GtfTrxs = GtfTrxs { gtfExonLocs, gtfCdsLocs :: !(HM.HashMap BS.ByteString [ContigSeqLoc])
                        , gtfTogene :: !(HM.HashMap BS.ByteString BS.ByteString)
                        }
+data GtfAttr = GtfAttr { attrName, attrValue :: !BS.ByteString } deriving (Show)
                
 ftypeCds :: BS.ByteString
 ftypeCds = BS.pack "CDS"
@@ -177,32 +182,47 @@ insertGtfLine trxsin l
           insertExon t0 = {-# SCC "insertExon" #-} t0 { gtfExonLocs = HM.insertWith (++) trx [gtfLoc l] (gtfExonLocs t0) } 
 
 gtflineIter :: (Monad m) => Iter.Enumeratee [BS.ByteString] [GtfLine] m a
-gtflineIter = Iter.convStream $ Iter.head >>= liftM (: []) . handleErr . ZP.parse gtfline
+gtflineIter = Iter.convStream $ Iter.head >>= liftM (: []) . handleErr . gtfline
   where handleErr = either (Iter.throwErr . Iter.iterStrExc) return 
 
--- Does NOT consume the remainder of the line
-gtfline :: ZP.Parser GtfLine
-gtfline = do seqname <- firstfield
-             _source <- dropField
-             ftype <- field
-             start <- decfield
-             end <- decfield
-             _score <- dropField
-             str <- strand
-             _frame <- dropField
-             gene <- attr "gene_id"
-             trx <- attr "transcript_id"
-             let name = toSeqLabel . BS.copy $ seqname
-                 loc = Loc.fromBoundsStrand (start - 1) (end - 1) str
-             return $! GtfLine gene trx ftype (OnSeq name loc)
+gtfline :: BS.ByteString -> Either String GtfLine
+gtfline l = addErrorLine $ case V.fromList . BS.split '\t' $ l of
+  fields | V.length fields < 9 -> Left $ "Expected 9 fields, saw " ++ show (V.length fields)
+         | otherwise -> let !seqname = toSeqLabel . BS.copy $ fields V.! 0
+                            !ftype = BS.copy $ fields V.! 2
+                        in do start <- decode $ fields V.! 3
+                              end <- decode $ fields V.! 4
+                              str <- case fields V.! 6 of { "+" -> Right Plus; "-" -> Right Minus; ch -> Left ("Bad strand character " ++ show ch) }
+                              let !loc = Loc.fromBoundsStrand (start - 1) (end - 1) str
+                                  !seqloc = OnSeq seqname loc
+                              attrs <- gtfattrs $ fields V.! 8
+                              gene <- reqattr "gene_id" attrs
+                              trx <- reqattr "transcript_id" attrs
+                              return $! GtfLine gene trx ftype seqloc
+  where addErrorLine good@(Right _) = good
+        addErrorLine (Left err) = Left $! err ++ "\nParsing GTF line " ++ show l
+        reqattr name attrs = case find ((== name) . attrName) attrs of
+          Just (GtfAttr _name value) -> Right value
+          Nothing -> Left $ "Missing required attribute " ++ show name ++ " within " ++ show (map attrName attrs)
 
-attr :: String -> ZP.Parser BS.ByteString
-attr name = ZP.takeWhile AP.isSpace_w8 *>
-            ZP.string (BS.pack name) *> 
-            ZP.takeWhile AP.isSpace_w8 *> 
-            ZP.string "\"" *>
-            ZP.takeWhile (/= c2w '\"') <* 
-            ZP.string "\";"
-            
+gtfattrs :: BS.ByteString -> Either String [GtfAttr]
+gtfattrs attrstr = C.unfoldM gtfattr attrstr C.$$ C.consume
 
-                           
+gtfattr :: BS.ByteString -> Either String (Maybe (GtfAttr, BS.ByteString))
+gtfattr l0 = case BS.dropWhile isSpace l0 of
+  l | BS.null l -> return Nothing
+    | otherwise -> let !(name0, valrest) = BS.break isSpace l
+                       !name = BS.copy name0
+                   in do (value0, rest) <- gtfvalue $ BS.dropWhile isSpace valrest
+                         let !value = BS.copy value0
+                             !attr = GtfAttr name value
+                         return $! Just (attr, rest)
+  where gtfvalue valrest = case BS.uncons valrest of
+          Just ('\"', str) -> let (val, rest0) = BS.break (== '\"') str
+                              in if BS.isPrefixOf "\";" rest0
+                                 then return (val, BS.drop 2 rest0)
+                                 else Left $ "Malformed quoted attribute value starting at\n" ++ show valrest
+          _ -> let (val, rest0) = BS.break (== ';') valrest
+               in if BS.isPrefixOf ";" rest0
+                  then return (val, BS.drop 1 rest0)
+                  else Left $ "Malformed unquoted attribute value starting at\n" ++ show valrest

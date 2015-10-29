@@ -16,12 +16,17 @@ import Bio.SeqLoc.Transcript
 import Bio.SeqLoc.TranscriptTable
 
 main :: IO ()
-main = do withFile "test/bed-out.txt" WriteMode $ \hout ->
-            let bedIter = bedTranscriptEnum $ Iter.mapM_ (BS.hPutStrLn hout . unparseLine)
-            in Iter.fileDriver bedIter "/data/genomes/Homo_sapiens/hg19_knownGene.bed"
-          withFile "test/bed-copy.bed" WriteMode $ \hout ->
-            let bedIter = bedTranscriptEnum $ Iter.mapM_ (BS.hPutStrLn hout . transcriptToBedStd)
-            in Iter.fileDriver bedIter "/data/genomes/Homo_sapiens/hg19_knownGene.bed"
+main = do trxs <- readBedTranscripts "/mnt/ingolialab/ingolia/Genomes/Saccharomyces_cerevisiae/YeastGenome/sac_cer_yassour.bed"
+          hPutStrLn stderr $! "Got " ++ (show . length $ trxs) ++ " transcripts"
+          trxs <- readBedTranscripts "/mnt/ingolialab/ingolia/Genomes/Homo_sapiens/GRCh38/gencode.bed"
+          hPutStrLn stderr $! "Got " ++ (show . length $ trxs) ++ " transcripts"
+          
+-- main = do withFile "test/bed-out.txt" WriteMode $ \hout ->
+--             let bedIter = bedTranscriptEnum $ Iter.mapM_ (BS.hPutStrLn hout . unparseLine)
+--             in Iter.fileDriver bedIter "/data/genomes/Homo_sapiens/hg19_knownGene.bed"
+--           withFile "test/bed-copy.bed" WriteMode $ \hout ->
+--             let bedIter = bedTranscriptEnum $ Iter.mapM_ (BS.hPutStrLn hout . transcriptToBedStd)
+--             in Iter.fileDriver bedIter "/data/genomes/Homo_sapiens/hg19_knownGene.bed"
             
           -- trx' <- readTable "test/out.txt"
           -- let trx10 = take 10 trx'
