@@ -197,10 +197,10 @@ gtfline l = addErrorLine $ case V.fromList . BS.split '\t' $ l of
                                   !seqloc = OnSeq seqname loc
                               attrs <- gtfattrs $ fields V.! 8
                               gene <- reqattr "gene_id" attrs
-                              trx <- reqattr "transcript_id" attrs
+                              let trx = either (const "") id $ reqattr "transcript_id" attrs
                               return $! GtfLine gene trx ftype seqloc
   where addErrorLine good@(Right _) = good
-        addErrorLine (Left err) = Left $! err ++ "\nParsing GTF line " ++ show l
+        addErrorLine (Left err) = Left $! err ++ "\nParsing GTF line\t" ++ (BS.unpack l)
         reqattr name attrs = case find ((== name) . attrName) attrs of
           Just (GtfAttr _name value) -> Right value
           Nothing -> Left $ "Missing required attribute " ++ show name ++ " within " ++ show (map attrName attrs)
